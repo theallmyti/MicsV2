@@ -30,8 +30,8 @@ Mics is a sleek, minimalist, high-performance desktop music player built with Re
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/theo-odore/Mics.git
-   cd Mics
+   git clone https://github.com/theo-odore/MicsV2.git
+   cd MicsV2
    ```
 
 2. **Install dependencies**
