@@ -565,7 +565,10 @@ async function getAudioUrlViaPuppeteer(id, attempt = 1) {
   let audioUrl = null
 
   try {
-    browser = await puppeteer.launch({ headless: 'new' })
+    browser = await puppeteer.launch({ 
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox'] 
+    })
     const page = await browser.newPage()
 
     await page.setRequestInterception(true)
@@ -653,7 +656,7 @@ app.get('/api/stream/:id', async (req, res) => {
           'Content-Range': `bytes ${start}-${end}/${fileSize}`,
           'Accept-Ranges': 'bytes',
           'Content-Length': chunksize,
-          'Content-Type': 'audio/webm',
+          'Content-Type': 'application/octet-stream',
           'Access-Control-Allow-Origin': '*'
         }
         res.writeHead(206, head)
@@ -661,7 +664,7 @@ app.get('/api/stream/:id', async (req, res) => {
       } else {
         const head = {
           'Content-Length': fileSize,
-          'Content-Type': 'audio/webm',
+          'Content-Type': 'application/octet-stream',
           'Access-Control-Allow-Origin': '*'
         }
         res.writeHead(200, head)

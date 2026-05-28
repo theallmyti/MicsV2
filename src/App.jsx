@@ -233,10 +233,11 @@ const MOCK_ALBUMS = {
     ]
   }
 };
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:3001`;
 
 const resolveThumbnails = (data) => {
   if (!data) return data;
-  const baseUrl = `http://${window.location.hostname}:3001`;
+  const baseUrl = API_BASE_URL;
   
   const fixUrl = (url) => {
     if (!url) return '';
@@ -1507,7 +1508,7 @@ function YourApp({ initialPlayerState }) {
     if (isRestored) {
       setIsBuffering(true);
       try {
-        const res = await fetch(`http://${window.location.hostname}:3001/api/info/${currentTrack.id}`);
+        const res = await fetch(`${API_BASE_URL}/api/info/${currentTrack.id}`);
         if (!res.ok) {
           throw new Error("Track unavailable");
         }
@@ -1561,7 +1562,7 @@ function YourApp({ initialPlayerState }) {
     const loadHomeData = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://${window.location.hostname}:3001/api/home`);
+        const res = await fetch(`${API_BASE_URL}/api/home`);
         if (res.ok) {
           const rawData = await res.json();
           const data = resolveThumbnails(rawData);
@@ -1596,7 +1597,7 @@ function YourApp({ initialPlayerState }) {
 
     const fetchTrendingFallback = async (existingSections = []) => {
       try {
-        const res = await fetch(`http://${window.location.hostname}:3001/api/trending`);
+        const res = await fetch(`${API_BASE_URL}/api/trending`);
         if (res.ok) {
           const rawData = await res.json();
           const data = resolveThumbnails(rawData);
@@ -1658,7 +1659,7 @@ function YourApp({ initialPlayerState }) {
         mainRef.current.scrollTop = 0;
       }
       try {
-        const res = await fetch(`http://${window.location.hostname}:3001/api/search?q=${encodeURIComponent(activeArtist.name)}`);
+        const res = await fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(activeArtist.name)}`);
         if (res.ok) {
           const data = await res.json();
           setArtistTracks(resolveThumbnails(data) || []);
@@ -1693,7 +1694,7 @@ function YourApp({ initialPlayerState }) {
         mainRef.current.scrollTop = 0;
       }
       try {
-        const res = await fetch(`http://${window.location.hostname}:3001/api/search?q=${encodeURIComponent(activeAlbum.title)}`);
+        const res = await fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(activeAlbum.title)}`);
         if (res.ok) {
           const data = await res.json();
           setAlbumTracks(resolveThumbnails(data) || []);
@@ -1751,7 +1752,7 @@ function YourApp({ initialPlayerState }) {
   const fetchUpNext = async (videoId, replace = false) => {
     try {
       setUpNextLoading(true);
-      const res = await fetch(`http://${window.location.hostname}:3001/api/upnext/${videoId}`);
+      const res = await fetch(`${API_BASE_URL}/api/upnext/${videoId}`);
       if (res.ok) {
         const rawData = await res.json();
         const data = resolveThumbnails(rawData);
@@ -1784,7 +1785,7 @@ function YourApp({ initialPlayerState }) {
     const fetchLyrics = async () => {
       setLyricsLoading(true);
       try {
-        const res = await fetch(`http://${window.location.hostname}:3001/api/lyrics/${currentTrack.id}`);
+        const res = await fetch(`${API_BASE_URL}/api/lyrics/${currentTrack.id}`);
         if (res.ok) {
           const data = await res.json();
           setLyrics(data || []);
@@ -1820,7 +1821,7 @@ function YourApp({ initialPlayerState }) {
   useEffect(() => {
     if (!audioRef.current) return;
     audioRef.current.volume = isMuted ? 0 : volume / 100;
-  }, [volume, isMuted]);
+  }, [volume, isMuted, currentTrack]);
 
   // Audio Event Handlers
   const handleTimeUpdate = () => {
@@ -1856,7 +1857,7 @@ function YourApp({ initialPlayerState }) {
 
   const fetchAutoplaySuggestions = async (videoId) => {
     try {
-      const res = await fetch(`http://${window.location.hostname}:3001/api/upnext/${videoId}`);
+      const res = await fetch(`${API_BASE_URL}/api/upnext/${videoId}`);
       if (res.ok) {
         const rawData = await res.json();
         const data = resolveThumbnails(rawData);
@@ -2085,7 +2086,7 @@ function YourApp({ initialPlayerState }) {
     setHighlightedIndex(-1); // Reset highlight index
     searchInputRef.current?.blur(); // Blur input on search execution
     try {
-      const res = await fetch(`http://${window.location.hostname}:3001/api/search?q=${encodeURIComponent(trimmed)}`);
+      const res = await fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(trimmed)}`);
       if (res.ok) {
         const data = await res.json();
         setSearchResults(resolveThumbnails(data) || []);
@@ -2111,7 +2112,7 @@ function YourApp({ initialPlayerState }) {
         listeners: '4.8M'
       });
       try {
-        const res = await fetch(`http://${window.location.hostname}:3001/api/artist-image?q=${encodeURIComponent(name)}`);
+        const res = await fetch(`${API_BASE_URL}/api/artist-image?q=${encodeURIComponent(name)}`);
         if (res.ok) {
           const imgData = await res.json();
           if (imgData.url) {
@@ -2233,8 +2234,9 @@ function YourApp({ initialPlayerState }) {
       {/* Hidden Audio Element */}
       {currentTrack && (
         <audio
+          crossOrigin="anonymous"
           ref={audioRef}
-          src={`http://${window.location.hostname}:3001/api/stream/${currentTrack.id}`}
+          src={`${API_BASE_URL}/api/stream/${currentTrack.id}`}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onPlay={handleAudioPlay}

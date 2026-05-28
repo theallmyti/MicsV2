@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: mics-backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./cache:/app/cache
+    environment:
+      - NODE_ENV=production
+      # Uncomment the line below to connect to the redis container if you need rate-limiting across instances
+      # - REDIS_URL=redis://redis:6379
+    restart: unless-stopped
+
+  # Optional Redis service
+  # redis:
+  #   image: redis:alpine
+  #   container_name: mics-redis
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
