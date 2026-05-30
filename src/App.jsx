@@ -2298,7 +2298,7 @@ function YourApp({ initialPlayerState }) {
           </div>
         </div>
         
-        <div className="flex-1 max-w-2xl px-8 hidden md:block">
+        <div className="flex-1 max-w-2xl px-2 sm:px-4 md:px-8">
           <div 
             ref={searchWrapperRef}
             className={`relative w-full flex items-center transition-all duration-200 border rounded-full ${
