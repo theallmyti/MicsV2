@@ -293,24 +293,14 @@ const resolveThumbnails = (data) => {
   return data;
 };
 
-const SEARCH_HISTORY_KEY = "mics_search_history";
+const SEARCH_HISTORY_KEY = "mics_search_history_v2";
 const MAX_HISTORY_ITEMS = 20; // store 20, display 7
 
 const loadSearchHistory = () => {
   try {
     const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
     if (!raw) {
-      const sampleHistory = [
-        { query: "om shanti om",      searchedAt: Date.now() - 1000 * 60 * 5   },
-        { query: "raabta",            searchedAt: Date.now() - 1000 * 60 * 18  },
-        { query: "ghungroo",          searchedAt: Date.now() - 1000 * 60 * 45  },
-        { query: "dhan dhana dhan",   searchedAt: Date.now() - 1000 * 60 * 120 },
-        { query: "for a reason remix",searchedAt: Date.now() - 1000 * 60 * 200 },
-        { query: "wishes",            searchedAt: Date.now() - 1000 * 60 * 300 },
-        { query: "laila main laila",  searchedAt: Date.now() - 1000 * 60 * 480 },
-      ];
-      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(sampleHistory));
-      return sampleHistory;
+      return [];
     }
     return JSON.parse(raw);
   } catch {
@@ -347,13 +337,6 @@ const clearSearchHistory = () => {
   } catch {}
 };
 
-const trendingSearches = [
-  "Arijit Singh new songs",
-  "Lo-fi beats to study",
-  "Bollywood hits 2024",
-  "AR Rahman classics",
-  "Workout playlist",
-];
 
 function YourApp({ initialPlayerState }) {
   // Navigation & Tab state
@@ -693,7 +676,6 @@ function YourApp({ initialPlayerState }) {
     if (searchHistory && searchHistory.length > 0) {
       list.push(...searchHistory.slice(0, 7).map(item => ({ type: 'recent', query: item.query })));
     }
-    list.push(...trendingSearches.map(item => ({ type: 'trending', query: item })));
     return list;
   };
 
@@ -705,39 +687,93 @@ function YourApp({ initialPlayerState }) {
     }
 
     setSuggestionsLoading(true);
-    const handler = setTimeout(() => {
-      const completions = getCompletions(searchQuery);
-      const artists = getArtists(searchQuery);
-      const songs = getMatchingSongs(searchQuery);
+    const controller = new AbortController();
+    const { signal } = controller;
 
-      const groups = [];
-      if (completions.length > 0) {
-        groups.push({
-          title: 'Query completions',
-          items: completions
-        });
-      }
-      if (artists.length > 0) {
-        groups.push({
-          title: 'Artists matching query',
-          items: artists
-        });
-      }
-      if (songs.length > 0) {
-        groups.push({
-          title: 'Songs matching query',
-          items: songs
-        });
-      }
+    const handler = setTimeout(async () => {
+      try {
+        const localArtists = getArtists(searchQuery);
+        const localSongs = getMatchingSongs(searchQuery);
 
-      setSuggestions(groups);
-      setSuggestionsLoading(false);
-    }, 200);
+        const [sugRes, searchRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/search/suggestions?q=${encodeURIComponent(searchQuery.trim())}`, { signal }).catch(() => null),
+          fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(searchQuery.trim())}`, { signal }).catch(() => null)
+        ]);
+
+        if (signal.aborted) return;
+
+        let completions = [];
+        if (sugRes && sugRes.ok) {
+          const remoteSugg = await sugRes.json();
+          if (Array.isArray(remoteSugg)) {
+            completions = remoteSugg.slice(0, 5).map(s => ({ type: 'completion', text: s }));
+          }
+        }
+        
+        if (completions.length === 0) {
+          completions = getCompletions(searchQuery);
+        }
+
+        let remoteSongs = [];
+        if (searchRes && searchRes.ok) {
+          const results = await searchRes.json();
+          if (Array.isArray(results)) {
+            remoteSongs = results.slice(0, 5).map(s => ({
+              type: 'song',
+              id: s.id,
+              title: s.title,
+              artist: s.artist,
+              thumbnail: s.thumbnail?.startsWith('/') ? `${API_BASE_URL}${s.thumbnail}` : s.thumbnail,
+              duration: s.duration,
+              album: s.album,
+              views: s.views
+            }));
+          }
+        }
+
+        const mergedSongs = [...localSongs];
+        remoteSongs.forEach(rs => {
+          if (!mergedSongs.some(ls => ls.id === rs.id)) {
+            mergedSongs.push(rs);
+          }
+        });
+
+        const groups = [];
+        if (completions.length > 0) {
+          groups.push({ title: 'Search suggestions', items: completions });
+        }
+        if (localArtists.length > 0) {
+          groups.push({ title: 'Artists matching query', items: localArtists });
+        }
+        if (mergedSongs.length > 0) {
+          groups.push({ title: 'Songs matching query', items: mergedSongs.slice(0, 6) });
+        }
+
+        if (!signal.aborted) {
+          setSuggestions(groups);
+          setSuggestionsLoading(false);
+        }
+      } catch (err) {
+        if (signal.aborted) return;
+        
+        const groups = [];
+        const c = getCompletions(searchQuery);
+        const a = getArtists(searchQuery);
+        const s = getMatchingSongs(searchQuery);
+        if (c.length > 0) groups.push({ title: 'Search suggestions', items: c });
+        if (a.length > 0) groups.push({ title: 'Artists matching query', items: a });
+        if (s.length > 0) groups.push({ title: 'Songs matching query', items: s });
+        
+        setSuggestions(groups);
+        setSuggestionsLoading(false);
+      }
+    }, 400);
 
     return () => {
       clearTimeout(handler);
+      controller.abort();
     };
-  }, [searchQuery, searchHistory]);
+  }, [searchQuery]);
 
   const audioRef = useRef(null);
   const searchWrapperRef = useRef(null);
@@ -840,92 +876,59 @@ function YourApp({ initialPlayerState }) {
   };
 
   const renderEmptyState = () => {
-    const flatList = getEmptyStateFlatList();
     const recentCount = searchHistory ? Math.min(searchHistory.length, 7) : 0;
+    if (recentCount === 0) return null;
 
     return (
       <div>
-        {recentCount > 0 && (
-          <div>
-            <div className="flex items-center justify-between px-4 py-2 text-[11px] font-bold text-text-tertiary tracking-wider uppercase">
-              <span>Recent searches</span>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearSearchHistory();
-                  setSearchHistory([]);
-                  setHighlightedIndex(-1);
-                }}
-                aria-label="Clear all search history"
-                className="text-[12px] text-text-secondary hover:text-white hover:underline lowercase font-normal normal-case"
-              >
-                Clear all
-              </button>
-            </div>
-            {searchHistory.slice(0, 7).map((item, idx) => {
-              const isHighlighted = idx === highlightedIndex;
-              return (
-                <div
-                  key={`recent-${item.query}-${idx}`}
-                  role="option"
-                  aria-selected={isHighlighted}
-                  onMouseEnter={() => setHighlightedIndex(idx)}
-                  onClick={() => triggerSearch(item.query)}
-                  className={`h-12 px-4 flex items-center gap-3 cursor-pointer transition-colors duration-150 ${
-                    isHighlighted ? 'bg-white/10' : 'hover:bg-white/5'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-[18px] text-text-tertiary select-none`}>
-                    history
-                  </span>
-                  <span className="flex-1 text-[14px] text-text-primary truncate font-normal">
-                    {item.query}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteSearchHistoryItem(item.query);
-                      const updated = loadSearchHistory();
-                      setSearchHistory(updated);
-                      setHighlightedIndex(-1);
-                    }}
-                    aria-label={`Remove ${item.query} from search history`}
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-text-tertiary hover:bg-white/10 hover:text-white transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[17px]">delete</span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
         <div>
-          <div className="px-4 py-2 text-[11px] font-bold text-text-tertiary tracking-wider uppercase">
-            Trending
+          <div className="flex items-center justify-between px-4 py-2 text-[11px] font-bold text-text-tertiary tracking-wider uppercase">
+            <span>Recent searches</span>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                clearSearchHistory();
+                setSearchHistory([]);
+                setHighlightedIndex(-1);
+              }}
+              aria-label="Clear all search history"
+              className="text-[12px] text-text-secondary hover:text-white hover:underline lowercase font-normal normal-case"
+            >
+              Clear all
+            </button>
           </div>
-          {trendingSearches.map((item, idx) => {
-            const flatIdx = recentCount + idx;
-            const isHighlighted = flatIdx === highlightedIndex;
+          {searchHistory.slice(0, 7).map((item, idx) => {
+            const isHighlighted = idx === highlightedIndex;
             return (
               <div
-                key={`trending-${item}-${idx}`}
+                key={`recent-${item.query}-${idx}`}
                 role="option"
                 aria-selected={isHighlighted}
-                onMouseEnter={() => setHighlightedIndex(flatIdx)}
-                onClick={() => triggerSearch(item)}
+                onMouseEnter={() => setHighlightedIndex(idx)}
+                onClick={() => triggerSearch(item.query)}
                 className={`h-12 px-4 flex items-center gap-3 cursor-pointer transition-colors duration-150 ${
                   isHighlighted ? 'bg-white/10' : 'hover:bg-white/5'
                 }`}
               >
-                <span className={`material-symbols-outlined text-[18px] select-none ${
-                  isHighlighted ? 'text-white' : 'text-text-secondary'
-                }`}>
-                  trending_up
+                <span className={`material-symbols-outlined text-[18px] text-text-tertiary select-none`}>
+                  history
                 </span>
                 <span className="flex-1 text-[14px] text-text-primary truncate font-normal">
-                  {item}
+                  {item.query}
                 </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteSearchHistoryItem(item.query);
+                    const updated = loadSearchHistory();
+                    setSearchHistory(updated);
+                    setHighlightedIndex(-1);
+                  }}
+                  aria-label={`Remove ${item.query} from search history`}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-text-tertiary hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[17px]">delete</span>
+                </button>
               </div>
             );
           })}
@@ -975,7 +978,8 @@ function YourApp({ initialPlayerState }) {
                       } else if (item.type === 'artist') {
                         triggerSearch(item.name);
                       } else if (item.type === 'song') {
-                        triggerSearch(item.title);
+                        setSearchFocused(false);
+                        handlePlayTrack(item, 'search_result');
                       }
                     }}
                     className={`h-12 px-4 flex items-center gap-3 cursor-pointer transition-colors duration-150 ${
@@ -1749,15 +1753,28 @@ function YourApp({ initialPlayerState }) {
 
   // ===== Queue helpers =====
   // Fetch YT Music Up Next for a given video ID and append/replace queue
-  const fetchUpNext = async (videoId, replace = false) => {
+  const fetchUpNext = async (videoId, replace = false, trackTitle = '', trackArtist = '') => {
     try {
       setUpNextLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/upnext/${videoId}`);
+      const queryParams = new URLSearchParams();
+      if (trackTitle) queryParams.append('title', trackTitle);
+      if (trackArtist) queryParams.append('artist', trackArtist);
+      
+      const res = await fetch(`${API_BASE_URL}/api/suggestions/${videoId}?${queryParams.toString()}`);
       if (res.ok) {
         const rawData = await res.json();
         const data = resolveThumbnails(rawData);
         if (data && data.length > 0) {
-          setUpNextQueue(prev => replace ? data : [...prev, ...data.filter(d => !prev.some(p => p.id === d.id))]);
+          setUpNextQueue(prev => {
+            const isDuplicate = (d, list) => list.some(p => p.id === d.id || (p.title && d.title && d.title.toLowerCase().includes(p.title.toLowerCase())));
+            const isCurrent = (d) => d.id === videoId || (trackTitle && d.title && d.title.toLowerCase().includes(trackTitle.toLowerCase()));
+            
+            if (replace) {
+              return data.filter(d => !isCurrent(d));
+            } else {
+              return [...prev, ...data.filter(d => !isCurrent(d) && !isDuplicate(d, prev))];
+            }
+          });
         } else if (replace) {
           setUpNextQueue(getLocalFallbackQueue());
         }
@@ -1802,12 +1819,12 @@ function YourApp({ initialPlayerState }) {
     // Only replace the queue when we explicitly start a new context (not when navigating within the queue)
     // This flag is set by handlePlayTrack and cleared here
     if (currentTrack.__freshContext) {
-      fetchUpNext(currentTrack.id, true);
+      fetchUpNext(currentTrack.id, true, currentTrack.title, currentTrack.artist);
     } else {
       // Queue is already correct (we popped the head). Refill when running low.
       setUpNextQueue(prev => {
         if (prev.length <= 3) {
-          fetchUpNext(currentTrack.id, false);
+          fetchUpNext(currentTrack.id, false, currentTrack.title, currentTrack.artist);
         }
         return prev;
       });
@@ -1881,7 +1898,7 @@ function YourApp({ initialPlayerState }) {
     playbackStore.setContext(context);
 
     // Determine the queue
-    if (contextQueue && Array.isArray(contextQueue) && contextQueue.length > 0) {
+    if (context !== 'search_result' && contextQueue && Array.isArray(contextQueue) && contextQueue.length > 0) {
       const idx = contextQueue.findIndex(t => t.id === track.id);
       if (idx !== -1) {
         setCurrentTrack({ ...track, __freshContext: false });
@@ -2230,7 +2247,7 @@ function YourApp({ initialPlayerState }) {
   }));
 
   return (
-    <div className="bg-bg-base text-text-primary overflow-hidden h-screen flex flex-col font-body-md select-none">
+    <div className="bg-bg-base text-text-primary overflow-hidden h-[100dvh] flex flex-col font-body-md select-none">
       {/* Hidden Audio Element */}
       {currentTrack && (
         <audio
@@ -2245,7 +2262,7 @@ function YourApp({ initialPlayerState }) {
       )}
 
       {/* Top Navigation */}
-      <header className="bg-bg-nav flex justify-between items-center px-gutter w-full sticky top-0 z-50 h-nav-height">
+      <header className="bg-bg-nav flex justify-between items-center px-4 md:px-gutter w-full shrink-0 z-50 h-nav-height">
         <div className="flex items-center gap-4">
           {isPlayerExpanded ? (
             <span 
@@ -2333,7 +2350,7 @@ function YourApp({ initialPlayerState }) {
             )}
 
             <AnimatePresence>
-              {searchFocused && (
+              {searchFocused && (searchQuery.trim() || (searchHistory && searchHistory.length > 0)) && (
                 <motion.div
                   ref={searchDropdownRef}
                   id="search-dropdown"
@@ -2385,7 +2402,7 @@ function YourApp({ initialPlayerState }) {
       </header>
 
       {/* Main Layout Container */}
-      <div className={`flex flex-1 overflow-hidden ${isPlayerExpanded ? 'h-[calc(100vh-56px)]' : 'h-[calc(100vh-128px)]'}`}>
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar Navigation */}
         {!isPlayerExpanded && (
           <aside className="hidden md:flex flex-col gap-stack-sm h-full w-sidebar-width bg-bg-nav pt-4 overflow-y-auto shrink-0 border-r border-outline-variant/10">
@@ -2541,7 +2558,7 @@ function YourApp({ initialPlayerState }) {
             initial="collapsed"
             animate="expanded"
             exit="exit"
-            className="relative flex-1 overflow-hidden h-full bg-bg-base"
+            className="fixed inset-0 z-[100] flex-1 overflow-hidden h-[100dvh] bg-bg-base"
           >
             {/* Background Blur Overlay */}
             <motion.div 
@@ -2551,7 +2568,19 @@ function YourApp({ initialPlayerState }) {
               animate="animate"
             />
             
-            <main className="relative z-10 h-full flex flex-col md:flex-row max-w-7xl mx-auto px-gutter py-8 gap-12 items-center md:items-start overflow-y-auto md:overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 z-20 px-4 md:px-gutter py-4 flex items-center justify-between pointer-events-none">
+              <button 
+                onClick={() => setIsPlayerExpanded(false)}
+                className="material-symbols-outlined text-text-primary cursor-pointer hover:bg-white/10 rounded-full p-2 pointer-events-auto transition-colors"
+                style={{ fontSize: '28px' }}
+              >
+                keyboard_arrow_down
+              </button>
+              
+              {/* Optional space for a context menu / settings button if needed later */}
+            </div>
+            
+            <main className="relative z-10 h-full flex flex-col md:flex-row max-w-7xl mx-auto px-gutter pt-20 pb-8 md:py-8 gap-12 items-center md:items-start overflow-y-auto md:overflow-hidden">
               {/* Left Column: Player Core */}
               <div className={`w-full ${playerLayout === 'cinematic' ? 'md:w-[568px]' : 'md:w-[450px]'} flex flex-col items-center md:items-start animate-fade-in shrink-0 transition-all duration-300`}>
                 {/* Artwork */}
@@ -2942,7 +2971,7 @@ function YourApp({ initialPlayerState }) {
             className="flex-1 overflow-y-auto bg-bg-base relative"
           >
             <div 
-              className={`${(activeArtist || activeAlbum) ? 'pb-32' : 'px-gutter pb-32 pt-6 flex flex-col gap-12'}`}
+              className={`${(activeArtist || activeAlbum) ? 'pb-8' : 'px-4 md:px-gutter pb-8 pt-6 flex flex-col gap-12'}`}
             >
             {activeArtist ? (
               /* ARTIST PROFILE VIEW */
@@ -4434,8 +4463,8 @@ function YourApp({ initialPlayerState }) {
       </div>
 
       {/* Bottom Player Bar */}
-      {!isPlayerExpanded && (
-        <footer className="fixed bottom-0 left-0 w-full z-50 bg-bg-player backdrop-blur-md bg-opacity-80 h-player-height border-t border-white/5 flex flex-col items-center">
+      {!isPlayerExpanded && currentTrack && (
+        <footer className="shrink-0 w-full z-50 bg-bg-player backdrop-blur-md bg-opacity-80 h-player-height border-t border-white/5 flex flex-col items-center relative">
         {/* Progress Bar at top of container */}
         <div 
           onClick={handleProgressBarClick}
@@ -4451,7 +4480,7 @@ function YourApp({ initialPlayerState }) {
         
         <div className="flex justify-between items-center px-gutter w-full h-full">
           {/* Left: Song Info */}
-          <div className="flex items-center gap-4 w-1/3 min-w-0">
+          <div className="flex items-center gap-3 md:gap-4 flex-1 md:flex-none md:w-1/3 min-w-0">
             <motion.div 
               layoutId="now-playing-artwork"
               onClick={() => setIsPlayerExpanded(true)}
@@ -4492,7 +4521,7 @@ function YourApp({ initialPlayerState }) {
               </div>
             </div>
             {currentTrack && (
-              <div className="flex items-center gap-2 ml-4 shrink-0">
+              <div className="hidden md:flex items-center gap-2 ml-4 shrink-0">
                 <button className="material-symbols-outlined icon-btn icon-btn-sm text-text-secondary hover:text-text-primary">thumb_down</button>
                 <div className="relative flex items-center justify-center">
                   <motion.button 
@@ -4540,7 +4569,7 @@ function YourApp({ initialPlayerState }) {
           </div>
           
           {/* Center: Controls */}
-          <div className="flex items-center gap-8 justify-center w-1/3">
+          <div className="hidden md:flex items-center gap-8 justify-center w-1/3">
             <button 
               onClick={handleToggleShuffle}
               className={`material-symbols-outlined icon-btn icon-btn-sm transition-colors duration-150 ${
@@ -4588,8 +4617,21 @@ function YourApp({ initialPlayerState }) {
           </div>
           
           {/* Right: Secondary Controls */}
-          <div className="flex items-center gap-4 justify-end w-1/3">
-            <div className="flex items-center gap-2 group cursor-pointer">
+          <div className="flex items-center gap-3 md:gap-4 justify-end shrink-0 md:w-1/3">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePlayPauseClick();
+              }}
+              disabled={!currentTrack}
+              className={`md:hidden material-symbols-outlined icon-btn icon-btn-md text-text-primary ${
+                !currentTrack ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              {isBuffering ? 'autorenew' : isPlaying ? 'pause' : 'play_arrow'}
+            </button>
+            <div className="hidden md:flex items-center gap-2 group cursor-pointer">
               <button 
                 onClick={() => setIsMuted(!isMuted)}
                 className="material-symbols-outlined icon-btn icon-btn-sm text-text-secondary group-hover:text-text-primary"
@@ -4613,7 +4655,7 @@ function YourApp({ initialPlayerState }) {
             </div>
             <button 
               onClick={() => setIsPlayerExpanded(true)}
-              className="material-symbols-outlined icon-btn icon-btn-sm text-text-secondary hover:text-text-primary"
+              className="hidden md:flex material-symbols-outlined icon-btn icon-btn-sm text-text-secondary hover:text-text-primary"
             >
               expand_less
             </button>
@@ -4624,7 +4666,7 @@ function YourApp({ initialPlayerState }) {
 
       {/* BottomNavBar Shell (Mobile) */}
       {!isPlayerExpanded && (
-        <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-gutter bg-bg-player backdrop-blur-md bg-opacity-60 h-player-height border-t border-white/5 shadow-2xl">
+        <nav className="md:hidden shrink-0 w-full z-50 flex justify-between items-center px-4 bg-bg-player backdrop-blur-md bg-opacity-60 h-player-height border-t border-white/5 shadow-2xl relative">
         <button 
           onClick={() => {
             setActiveTab('home');

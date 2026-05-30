@@ -273,15 +273,24 @@ app.get('/api/suggestions/:id', async (req, res) => {
     try {
       const video = await YouTube.getVideo(`https://youtube.com/watch?v=${req.params.id}`)
       searchQuery = video.channel?.name ? `${video.channel.name} songs` : (video.title || searchQuery)
-    } catch {}
+    } catch {
+      if (req.query.artist) {
+        searchQuery = `${req.query.artist} songs`;
+      } else if (req.query.title) {
+        searchQuery = `${req.query.title} similar songs`;
+      }
+    }
 
     const results = await YouTube.search(searchQuery, { limit: 15, type: 'video' })
-    const tracks = filterMashups(
-      results
-        .filter(v => v.id !== req.params.id && (v.duration || 0) / 1000 < 600)
-        .map(mapYouTubeSrTrack),
-      'upnext-sr'
-    )
+    let filtered = results.filter(v => v.id !== req.params.id && (v.duration || 0) / 1000 < 600);
+    
+    // Additional filter to remove exact duplicates of the requested title (case-insensitive) if we have the title
+    if (req.query.title) {
+      const lowerQueryTitle = req.query.title.toLowerCase();
+      filtered = filtered.filter(v => !(v.title && v.title.toLowerCase().includes(lowerQueryTitle)));
+    }
+
+    const tracks = filterMashups(filtered.map(mapYouTubeSrTrack), 'upnext-sr')
     res.json(tracks)
   } catch (err) {
     console.error('Suggestions error:', err.message)
