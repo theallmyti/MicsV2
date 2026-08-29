@@ -14,7 +14,7 @@ import { api } from '../convex/_generated/api'
 const SESSION_TOKEN_KEY = 'mics_session_token'
 
 // ── Convex client ──────────────────────────────────────────────────
-const convexUrl = import.meta.env.VITE_CONVEX_URL
+const convexUrl = import.meta.env.VITE_CONVEX_URL || 'https://notable-elephant-81.convex.cloud'
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null
 
 // ── Init stores (sync, before render) ─────────────────────────────

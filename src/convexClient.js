@@ -1,6 +1,6 @@
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 
-const convexUrl = import.meta.env.VITE_CONVEX_URL;
+const convexUrl = import.meta.env.VITE_CONVEX_URL || "https://notable-elephant-81.convex.cloud";
 
 let convex = null;
 
