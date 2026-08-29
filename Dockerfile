@@ -7,11 +7,14 @@ FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
+# Disable python requirement check during npm install of youtube-dl-exec
+ENV YOUTUBE_DL_SKIP_PYTHON_CHECK=1
+
 # Copy dependency manifests
 COPY package*.json ./
 
 # Install full dependencies (including devDependencies required for Vite build)
-RUN npm ci || npm install
+RUN npm ci --ignore-scripts || npm install --ignore-scripts
 
 # Copy application source and build production bundle
 COPY . .
@@ -22,18 +25,20 @@ RUN npm run build
 # ==============================================================================
 FROM node:20-bookworm-slim AS runner
 
-# Install system dependencies: Chromium (for headless fallback), FFmpeg, Python3, and yt-dlp
+# Install system dependencies: Chromium (for headless fallback), FFmpeg, Python3, python-is-python3, and yt-dlp
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     ffmpeg \
     python3 \
     python3-pip \
+    python-is-python3 \
     ca-certificates \
     && pip3 install --no-cache-dir --break-system-packages yt-dlp \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure environment variables for Chromium and container runtime
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+# Configure environment variables for Chromium, Python, and container runtime
+ENV YOUTUBE_DL_SKIP_PYTHON_CHECK=1 \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
     NODE_ENV=production \
     PORT=3001
@@ -42,7 +47,7 @@ WORKDIR /app
 
 # Copy dependency manifests and install production-only dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev || npm install --omit=dev
+RUN npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts
 
 # Copy server code and configuration
 COPY server/ ./server/
