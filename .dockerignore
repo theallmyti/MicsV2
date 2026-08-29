@@ -1,5 +1,11 @@
 node_modules
 cache
+scratch
+dist
+dev-dist
+.git
+.github
 npm-debug.log
 .DS_Store
 .env
+.env.local

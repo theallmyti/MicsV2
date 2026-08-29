@@ -18,7 +18,7 @@ puppeteer.use(StealthPlugin());
 const YouTube = (youtubeSr as any).default || youtubeSr;
 const app = express();
 app.set('trust proxy', 1);
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -52,12 +52,21 @@ app.use(limiter);
 // Register the playlist import router
 app.use('/api/import', importRouter);
 
-// ===== Root / Health check route =====
-app.get('/', (req: any, res: any) => {
-  if (req.accepts('html')) {
-    res.setHeader('Content-Type', 'text/html');
-    return res.send(`
-      <!DOCTYPE html>
+// ===== Static files & SPA fallback in production =====
+const distPath = path.join(process.cwd(), 'dist');
+const hasDist = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, 'index.html'));
+
+if (hasDist) {
+  app.use(express.static(distPath));
+}
+
+// ===== Root / Health check route (fallback if dist not built) =====
+if (!hasDist) {
+  app.get('/', (req: any, res: any) => {
+    if (req.accepts('html')) {
+      res.setHeader('Content-Type', 'text/html');
+      return res.send(`
+        <!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8">
@@ -195,6 +204,7 @@ app.get('/', (req: any, res: any) => {
     ]
   });
 });
+}
 
 // ===== YouTube Music API (Primary Search Engine) =====
 const YTMusicConstructor = (YTMusic as any)?.default || YTMusic;
@@ -711,9 +721,19 @@ async function getAudioUrlViaPuppeteer(id: string, attempt = 1): Promise<any> {
   let audioUrl: string | null = null;
 
   try {
+    const puppeteerArgs = [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-gpu'
+    ];
     browser = await puppeteer.launch({ 
-      headless: true, // using standard headless mode compatible with bookworm
-      args: ['--no-sandbox', '--disable-setuid-sandbox'] 
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: puppeteerArgs
     });
     const page = await browser.newPage();
 
@@ -1120,9 +1140,19 @@ app.get('/api/upnext/:videoId', async (req: any, res: any) => {
   }
 });
 
+// ===== SPA fallback for client routing in production =====
+if (hasDist) {
+  app.get('*', (req: any, res: any, next: any) => {
+    if (req.path.startsWith('/api/') || req.path === '/api') {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
 // ===== Boot =====
 async function boot() {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n  🎵 Mics Server running at http://localhost:${PORT}`);
     console.log(`  ├─ Search:      GET /api/search?q=song+name`);
     console.log(`  ├─ Suggestions: GET /api/search/suggestions?q=blind`);
