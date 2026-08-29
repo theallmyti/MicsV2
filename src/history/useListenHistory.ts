@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import type { TrackSummary, AlbumSummary, ListeningProfile, SectionInfluenceParams } from "./types";
+import type { TrackSummary, ListeningProfile } from "./types";
 import { historyStore } from "./store";
 import { getListenAgainTracks, getListenAgainAlbums } from "./listenAgain";
 import { getSectionInfluenceParams } from "./homeInfluence";

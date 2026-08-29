@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Agentation } from "agentation";
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   pageVariants,
@@ -56,6 +55,13 @@ import { historyStore } from './history/store';
 import { useListenHistory } from './history/useListenHistory';
 import { scoreTrackAgainstHistory } from './history/homeInfluence';
 import { playerStatePersistence } from './player/playerStatePersistence';
+
+// New system imports
+import libraryStore from './store/libraryStore';
+import CreatePlaylistModal from './components/playlist/CreatePlaylistModal';
+import ImportPlaylistModal from './components/playlist/ImportPlaylistModal';
+import OnboardingEmptyState from './components/home/OnboardingEmptyState';
+
 const leftPathVariants = {
   play: { d: "M 8,5 L 13.5,8.5 L 13.5,15.5 L 8,19 Z" },
   pause: { d: "M 6,5 L 10,5 L 10,19 L 6,19 Z" }
@@ -66,173 +72,7 @@ const rightPathVariants = {
   pause: { d: "M 14,5 L 18,5 L 18,19 L 14,19 Z" }
 };
 
-
-const MOCK_ARTISTS = {
-  'the midnight soul': {
-    name: 'The Midnight Soul',
-    img: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400&h=400&fit=crop&q=80',
-    subscribers: '4.2M',
-    listeners: '12M',
-    tracks: [
-      { id: '2g5y74q1P7c', title: 'Moonlight Echoes', artist: 'The Midnight Soul', album: 'Neon Dreams', duration: 225, thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop&q=80' },
-      { id: 'neV3EPWRLIY', title: 'Velvet Shadows', artist: 'The Midnight Soul', album: 'Velvet Shadows', duration: 252, thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400&h=400&fit=crop&q=80' },
-      { id: 'r9-V4Drc7tA', title: 'Midnight Drive', artist: 'The Midnight Soul', album: 'Single', duration: 200, thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop&q=80' },
-      { id: '7-x3Y1S3b0s', title: 'Celestial Bloom', artist: 'The Midnight Soul', album: 'Neon Dreams', duration: 302, thumbnail: 'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?w=400&h=400&fit=crop&q=80' }
-    ],
-    albums: [
-      { id: 'neon-dreams', title: 'Neon Dreams', artist: 'The Midnight Soul', year: '2023', type: 'Album', thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&h=400&fit=crop&q=80' },
-      { id: 'velvet-shadows-album', title: 'Velvet Shadows', artist: 'The Midnight Soul', year: '2021', type: 'Album', thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400&h=400&fit=crop&q=80' },
-      { id: 'urban-solitude', title: 'Urban Solitude', artist: 'The Midnight Soul', year: '2019', type: 'Album', thumbnail: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&h=400&fit=crop&q=80' },
-      { id: 'the-quiet-storm', title: 'The Quiet Storm', artist: 'The Midnight Soul', year: '2018', type: 'Album', thumbnail: 'https://images.unsplash.com/photo-1487180142328-054b783fc471?w=400&h=400&fit=crop&q=80' }
-    ],
-    singles: [
-      { id: 'midnight-drive-single', title: 'Midnight Drive', artist: 'The Midnight Soul', year: '2023', type: 'Single', thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop&q=80' },
-      { id: 'city-lights-single', title: 'City Lights', artist: 'The Midnight Soul', year: '2022', type: 'Single', thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&h=400&fit=crop&q=80' },
-      { id: 'after-hours-single', title: 'After Hours', artist: 'The Midnight Soul', year: '2022', type: 'Single', thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop&q=80' }
-    ]
-  },
-  'echo chamber': {
-    name: 'Echo Chamber',
-    img: 'https://images.unsplash.com/photo-1516280440614-37939bbacd6a?w=400&h=400&fit=crop&q=80',
-    subscribers: '1.2M',
-    listeners: '4.5M',
-    tracks: [
-      { id: '3tmd-ClpJKA', title: 'Ethereal Echoes', artist: 'Echo Chamber', album: 'Chamber Vibes', duration: 280, thumbnail: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=400&fit=crop&q=80' }
-    ],
-    albums: [
-      { id: 'chamber-vibes', title: 'Chamber Vibes', artist: 'Echo Chamber', year: '2022', type: 'Album', thumbnail: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=400&fit=crop&q=80' }
-    ],
-    singles: []
-  },
-  'lia moon': {
-    name: 'Lia Moon',
-    img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&q=80',
-    subscribers: '890K',
-    listeners: '3M',
-    tracks: [
-      { id: '7-x3Y1S3b0s', title: 'Moonlight Shadow', artist: 'Lia Moon', album: 'Lia Moods', duration: 180, thumbnail: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&q=80' }
-    ],
-    albums: [
-      { id: 'lia-moods', title: 'Lia Moods', artist: 'Lia Moon', year: '2023', type: 'Album', thumbnail: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&q=80' }
-    ],
-    singles: []
-  },
-  'vance rivers': {
-    name: 'Vance Rivers',
-    img: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop&q=80',
-    subscribers: '2.5M',
-    listeners: '9M',
-    tracks: [
-      { id: 'neV3EPWRLIY', title: 'River Reflections', artist: 'Vance Rivers', album: 'Flow', duration: 250, thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop&q=80' }
-    ],
-    albums: [
-      { id: 'flow-album', title: 'Flow', artist: 'Vance Rivers', year: '2021', type: 'Album', thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop&q=80' }
-    ],
-    singles: []
-  },
-  'silas grey': {
-    name: 'Silas Grey',
-    img: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&h=400&fit=crop&q=80',
-    subscribers: '3.1M',
-    listeners: '11M',
-    tracks: [
-      { id: 'r9-V4Drc7tA', title: 'Silas Solitude', artist: 'Silas Grey', album: 'Grey Skies', duration: 230, thumbnail: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&h=400&fit=crop&q=80' }
-    ],
-    albums: [
-      { id: 'grey-skies-album', title: 'Grey Skies', artist: 'Silas Grey', year: '2023', type: 'Album', thumbnail: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&h=400&fit=crop&q=80' }
-    ],
-    singles: []
-  },
-  'the weeknd': {
-    name: 'The Weeknd',
-    img: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&h=400&fit=crop&q=80',
-    subscribers: '32.1M',
-    listeners: '108M',
-    tracks: [
-      { id: 'R9U0o0uI1x8', title: 'Alone Again', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 250, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&h=400&fit=crop&q=80' },
-      { id: 'FstLrs4T-iI', title: 'Too Late', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 239, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&h=400&fit=crop&q=80' },
-      { id: '5wBvE639_tM', title: 'Hardest To Love', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 211, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&h=400&fit=crop&q=80' },
-      { id: '3KzO_V_Wb08', title: 'Scared To Live', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 191, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&h=400&fit=crop&q=80' },
-      { id: '2Z2hS_t7654', title: 'Snowchild', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 247, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&h=400&fit=crop&q=80' },
-      { id: 'Vd6199w6K9E', title: 'Escape from LA', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 355, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&h=400&fit=crop&q=80' }
-    ],
-    albums: [
-      { id: 'after-hours-deluxe', title: 'After Hours (Deluxe)', artist: 'The Weeknd', year: '2020', type: 'Album', thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&h=400&fit=crop&q=80' }
-    ],
-    singles: []
-  }
-};
-
-const MOCK_ALBUMS = {
-  'after-hours-deluxe': {
-    title: 'After Hours (Deluxe)',
-    artist: 'The Weeknd',
-    type: 'Album',
-    year: '2020',
-    thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=640&h=640&fit=crop&q=80',
-    tracks: [
-      { id: 'R9U0o0uI1x8', title: 'Alone Again', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 250, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=640&h=640&fit=crop&q=80' },
-      { id: 'FstLrs4T-iI', title: 'Too Late', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 239, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=640&h=640&fit=crop&q=80' },
-      { id: '5wBvE639_tM', title: 'Hardest To Love', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 211, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=640&h=640&fit=crop&q=80' },
-      { id: '3KzO_V_Wb08', title: 'Scared To Live', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 191, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=640&h=640&fit=crop&q=80' },
-      { id: 'RzfGZ1S-I28', title: 'Snowchild', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 247, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=640&h=640&fit=crop&q=80' },
-      { id: 'Vd6199w6K9E', title: 'Escape from LA', artist: 'The Weeknd', album: 'After Hours (Deluxe)', duration: 355, thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=640&h=640&fit=crop&q=80' }
-    ]
-  },
-  'neon-dreams': {
-    title: 'Neon Dreams',
-    artist: 'The Midnight Soul',
-    type: 'Album',
-    year: '2023',
-    thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=640&h=640&fit=crop&q=80',
-    tracks: [
-      { id: '2g5y74q1P7c', title: 'Moonlight Echoes', artist: 'The Midnight Soul', album: 'Neon Dreams', duration: 225, thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80' },
-      { id: '7-x3Y1S3b0s', title: 'Celestial Bloom', artist: 'The Midnight Soul', album: 'Neon Dreams', duration: 302, thumbnail: 'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?w=640&h=640&fit=crop&q=80' }
-    ]
-  },
-  'velvet-shadows-album': {
-    title: 'Velvet Shadows',
-    artist: 'The Midnight Soul',
-    type: 'Album',
-    year: '2021',
-    thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=640&h=640&fit=crop&q=80',
-    tracks: [
-      { id: 'neV3EPWRLIY', title: 'Velvet Shadows', artist: 'The Midnight Soul', album: 'Velvet Shadows', duration: 252, thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=640&h=640&fit=crop&q=80' }
-    ]
-  },
-  'cyberpunk-essentials': {
-    title: 'Cyberpunk Essentials',
-    artist: 'Mics',
-    type: 'Playlist',
-    year: '2024',
-    thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=640&h=640&fit=crop&q=80',
-    tracks: [
-      { id: '2g5y74q1P7c', title: 'Neon Horizon', artist: 'Electric Dream', album: 'Cyberpunk Essentials', duration: 210, thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=640&h=640&fit=crop&q=80' },
-      { id: 'r9-V4Drc7tA', title: 'Techno Pulse', artist: 'Circuitry', album: 'Cyberpunk Essentials', duration: 250, thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80' }
-    ]
-  },
-  'midnight-melancholy': {
-    title: 'Midnight Melancholy',
-    artist: 'Mics',
-    type: 'Playlist',
-    year: '2024',
-    thumbnail: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=640&h=640&fit=crop&q=80',
-    tracks: [
-      { id: 'neV3EPWRLIY', title: 'Midnight Jazz Essentials', artist: 'Mics', album: 'Midnight Melancholy', duration: 180, thumbnail: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=640&h=640&fit=crop&q=80' }
-    ]
-  },
-  'lo-fi-coding-beats': {
-    title: 'Lo-Fi Coding Beats',
-    artist: 'Mics',
-    type: 'Playlist',
-    year: '2024',
-    thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=640&h=640&fit=crop&q=80',
-    tracks: [
-      { id: '7-x3Y1S3b0s', title: 'Unplugged Sessions', artist: 'Acoustic Soul', album: 'Lo-Fi Coding Beats', duration: 180, thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=640&h=640&fit=crop&q=80' },
-      { id: '3tmd-ClpJKA', title: 'Ethereal Echoes', artist: 'Cloud Walker', album: 'Lo-Fi Coding Beats', duration: 280, thumbnail: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=640&h=640&fit=crop&q=80' }
-    ]
-  }
-};
+const trendingSearches = ['Lofi beats', 'Relaxing piano', 'Workout mix', 'Coding focus', 'Pop hits'];
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:3001`;
 
 const resolveThumbnails = (data) => {
@@ -338,16 +178,32 @@ const clearSearchHistory = () => {
 };
 
 
-function YourApp({ initialPlayerState }) {
+function YourApp({ initialPlayerState, convexUser, sessionToken, onLogout }) {
   // Navigation & Tab state
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'explore' | 'library' | 'profile'
-  const [profileName, setProfileName] = useState(() => localStorage.getItem('mics_profile_name') || '');
-  const [profileUsername, setProfileUsername] = useState(() => localStorage.getItem('mics_profile_username') || '');
-  const [profileBio, setProfileBio] = useState(() => localStorage.getItem('mics_profile_bio') || '');
+  // Profile — prefer Convex cloud data, fall back to localStorage
+  const [profileName, setProfileName] = useState(() =>
+    convexUser?.displayName || localStorage.getItem('mics_profile_name') || ''
+  );
+  const [profileUsername, setProfileUsername] = useState(() =>
+    convexUser?.username || localStorage.getItem('mics_profile_username') || ''
+  );
+  const [profileBio, setProfileBio] = useState(() =>
+    convexUser?.bio || localStorage.getItem('mics_profile_bio') || ''
+  );
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editNameVal, setEditNameVal] = useState(profileName);
   const [editUsernameVal, setEditUsernameVal] = useState(profileUsername);
   const [editBioVal, setEditBioVal] = useState(profileBio);
+
+  // Keep profile in sync if convexUser loads after initial render
+  useEffect(() => {
+    if (convexUser) {
+      if (convexUser.displayName) setProfileName(convexUser.displayName);
+      if (convexUser.username) setProfileUsername(convexUser.username);
+      if (convexUser.bio) setProfileBio(convexUser.bio);
+    }
+  }, [convexUser?.displayName, convexUser?.username, convexUser?.bio]);
 
   const handleStartEditProfile = () => {
     setEditNameVal(profileName);
@@ -461,15 +317,6 @@ function YourApp({ initialPlayerState }) {
     // Add library items
     if (Array.isArray(libraryItems)) {
       libraryItems.forEach(item => {
-        if (item && (item.type === 'Song' || !item.type)) {
-          addSong(item);
-        }
-      });
-    }
-
-    // Add default library items
-    if (Array.isArray(defaultLibraryItems)) {
-      defaultLibraryItems.forEach(item => {
         if (item && (item.type === 'Song' || !item.type)) {
           addSong(item);
         }
@@ -596,8 +443,6 @@ function YourApp({ initialPlayerState }) {
   };
 
   const getArtistAvatar = (artistName) => {
-    const found = relatedArtists.find(a => a.name.toLowerCase() === artistName.toLowerCase());
-    if (found && found.img) return found.img;
     return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&q=80';
   };
 
@@ -607,17 +452,6 @@ function YourApp({ initialPlayerState }) {
 
     const seenArtists = new Set();
     const artists = [];
-
-    relatedArtists.forEach(art => {
-      if (art.name.toLowerCase().includes(q) && !seenArtists.has(art.name.toLowerCase())) {
-        seenArtists.add(art.name.toLowerCase());
-        artists.push({
-          type: 'artist',
-          name: art.name,
-          thumbnail: art.img
-        });
-      }
-    });
 
     const localSongs = getAllLocalSongs();
     localSongs.forEach(song => {
@@ -997,14 +831,14 @@ function YourApp({ initialPlayerState }) {
                       <img 
                         src={item.thumbnail} 
                         alt={item.name} 
-                        className="w-6 h-6 rounded-full object-cover shrink-0" 
+                        className="w-12 h-12 rounded-full object-cover shrink-0" 
                       />
                     )}
                     {item.type === 'song' && (
                       <img 
                         src={item.thumbnail} 
                         alt={item.title} 
-                        className="w-8 h-8 rounded object-cover shrink-0" 
+                        className="w-12 h-12 rounded object-cover shrink-0" 
                       />
                     )}
 
@@ -1127,109 +961,18 @@ function YourApp({ initialPlayerState }) {
     { title: 'Relaxing', bg: '#1a2a3a', icon: 'spa' }
   ];
 
-  // Default playable Library items mapped to real YouTube IDs
-  const defaultLibraryItems = [
-    {
-      id: '2g5y74q1P7c',
-      title: 'Neon Horizon',
-      artist: 'Electric Dream',
-      type: 'Album',
-      thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=640&h=640&fit=crop&q=80',
-      duration: 210
-    },
-    {
-      id: 'neV3EPWRLIY',
-      title: 'Midnight Jazz Essentials',
-      artist: 'Mics',
-      type: 'Playlist',
-      thumbnail: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=640&h=640&fit=crop&q=80',
-      duration: 3200
-    },
-    {
-      id: 'r9-V4Drc7tA',
-      title: 'Techno Pulse',
-      artist: 'Circuitry',
-      type: 'Album',
-      thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80',
-      duration: 250
-    },
-    {
-      id: '7-x3Y1S3b0s',
-      title: 'Unplugged Sessions',
-      artist: 'Acoustic Soul',
-      type: 'Album',
-      thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=640&h=640&fit=crop&q=80',
-      duration: 180
-    },
-    {
-      id: 'gCYcHz2k5x0',
-      title: 'Summer Hits 2024',
-      artist: 'Mics',
-      type: 'Playlist',
-      thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=640&h=640&fit=crop&q=80',
-      duration: 2900
-    },
-    {
-      id: '3tmd-ClpJKA',
-      title: 'Ethereal Echoes',
-      artist: 'Cloud Walker',
-      type: 'Album',
-      thumbnail: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=640&h=640&fit=crop&q=80',
-      duration: 280
-    }
-  ];
+  // User Playlists state loaded from LibraryStore
+  const [playlists, setPlaylists] = useState(() => libraryStore.getPlaylists());
 
-  // Related Artists Data
-  const relatedArtists = [
-    {
-      name: 'The Weeknd',
-      img: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=640&h=640&fit=crop&q=80',
-      subscribers: '32.1M',
-      listeners: '108M'
-    },
-    {
-      name: 'The Midnight Soul',
-      img: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=640&h=640&fit=crop&q=80',
-      subscribers: '4.2M',
-      listeners: '12M'
-    },
-    {
-      name: 'Echo Chamber',
-      img: 'https://images.unsplash.com/photo-1516280440614-37939bbacd6a?w=640&h=640&fit=crop&q=80',
-      subscribers: '1.2M',
-      listeners: '4.5M'
-    },
-    {
-      name: 'Lia Moon',
-      img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=640&h=640&fit=crop&q=80',
-      subscribers: '890K',
-      listeners: '3M'
-    },
-    {
-      name: 'Vance Rivers',
-      img: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=640&h=640&fit=crop&q=80',
-      subscribers: '2.5M',
-      listeners: '9M'
-    },
-    {
-      name: 'Silas Grey',
-      img: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=640&h=640&fit=crop&q=80',
-      subscribers: '3.1M',
-      listeners: '11M'
-    }
-  ];
+  // Subscribe to LibraryStore changes
+  useEffect(() => {
+    const unsubscribe = libraryStore.subscribe(() => {
+      setPlaylists(libraryStore.getPlaylists());
+    });
+    return unsubscribe;
+  }, []);
 
-  // User Playlists state loaded from LocalStorage
-  const [playlists, setPlaylists] = useState(() => {
-    localStorage.removeItem('mics_playlists');
-    const saved = localStorage.getItem('mics_playlists_v2');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  // User Library items state loaded from LocalStorage
+  // User Library items state loaded from LocalStorage (liked tracks, etc)
   const [libraryItems, setLibraryItems] = useState(() => {
     localStorage.removeItem('mics_library');
     const saved = localStorage.getItem('mics_library_v2');
@@ -1239,14 +982,16 @@ function YourApp({ initialPlayerState }) {
     return [];
   });
 
-  // Sync Library Items and Playlists to LocalStorage
+  // Sync Library Items to LocalStorage
   useEffect(() => {
     localStorage.setItem('mics_library_v2', JSON.stringify(libraryItems));
   }, [libraryItems]);
 
-  useEffect(() => {
-    localStorage.setItem('mics_playlists_v2', JSON.stringify(playlists));
-  }, [playlists]);
+  // Additional V2 Modals & Dropdown state
+  const [showUploadDropdown, setShowUploadDropdown] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [activeMood, setActiveMood] = useState(null);
+  const [moodCache, setMoodCache] = useState({});
 
   const [speedDialItems, setSpeedDialItems] = useState(() => {
     // Clear legacy mock-polluted local storage keys
@@ -1339,29 +1084,15 @@ function YourApp({ initialPlayerState }) {
   };
 
   // --- RECOMMENDATION SYSTEM INTEGRATION ---
-  const [catalog, setCatalog] = useState(() => {
-    const initialTracks = [
-      ...defaultLibraryItems,
-      ...Object.values(MOCK_ARTISTS).flatMap(a => a.tracks || [])
-    ];
-    const unique = [];
-    const seen = new Set();
-    initialTracks.forEach(t => {
-      const enriched = enrichTrack(t);
-      if (enriched.id && !seen.has(enriched.id)) {
-        seen.add(enriched.id);
-        unique.push(enriched);
-      }
-    });
-    return unique;
-  });
+  const [catalog, setCatalog] = useState([]);
 
   useEffect(() => {
     const newTracks = [
       ...sections.flatMap(s => s.contents || []),
       ...searchResults,
       ...libraryItems,
-      ...speedDialItems
+      ...speedDialItems,
+      ...playlists.flatMap(p => p.tracks || [])
     ];
     
     setCatalog(prev => {
@@ -1378,7 +1109,7 @@ function YourApp({ initialPlayerState }) {
       }
       return prev;
     });
-  }, [sections, searchResults, libraryItems, speedDialItems]);
+  }, [sections, searchResults, libraryItems, speedDialItems, playlists]);
 
   const catalogTracksRef = useRef({});
   useEffect(() => {
@@ -1446,6 +1177,41 @@ function YourApp({ initialPlayerState }) {
       .sort((a, b) => b.score - a.score)
       .map(item => item.track);
   }, [rawDiscoveryPicks, influenceParams, newProfile]);
+
+  const computedRelatedArtists = useMemo(() => {
+    if (!activeArtist) return [];
+    const recTracks = getListenersAlsoLike(activeArtist.name);
+    const seen = new Set();
+    const list = [];
+    recTracks.forEach(t => {
+      if (t.artist && t.artist !== activeArtist.name && !seen.has(t.artist)) {
+        seen.add(t.artist);
+        list.push({
+          name: t.artist,
+          img: t.thumbnail || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&q=80',
+          subscribers: '1.2M',
+          listeners: '4.8M'
+        });
+      }
+    });
+    if (list.length < 5) {
+      const allArtists = Array.from(new Set(catalog.map(t => t.artist))).filter(a => a && a !== activeArtist.name);
+      allArtists.forEach(artist => {
+        if (list.length >= 5) return;
+        if (!seen.has(artist)) {
+          seen.add(artist);
+          const t = catalog.find(track => track.artist === artist);
+          list.push({
+            name: artist,
+            img: t?.thumbnail || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&q=80',
+            subscribers: '1.2M',
+            listeners: '4.8M'
+          });
+        }
+      });
+    }
+    return list.slice(0, 6);
+  }, [activeArtist, getListenersAlsoLike, catalog]);
 
   // Sync history tracker with current track changes
   useEffect(() => {
@@ -1642,19 +1408,6 @@ function YourApp({ initialPlayerState }) {
   useEffect(() => {
     if (!activeArtist) return;
     
-    const mockKey = activeArtist.name.toLowerCase();
-    const mockArtist = MOCK_ARTISTS[mockKey];
-    
-    if (mockArtist) {
-      setArtistTracks(mockArtist.tracks || []);
-      setArtistLoading(false);
-      setScrollOffset(0);
-      if (mainRef.current) {
-        mainRef.current.scrollTop = 0;
-      }
-      return;
-    }
-
     const fetchArtistSongs = async () => {
       setArtistLoading(true);
       // Reset scroll offset when opening a new artist
@@ -1680,11 +1433,10 @@ function YourApp({ initialPlayerState }) {
   useEffect(() => {
     if (!activeAlbum) return;
     
-    const albumKey = activeAlbum.id || activeAlbum.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const mockAlbum = MOCK_ALBUMS[albumKey];
-    
-    if (mockAlbum) {
-      setAlbumTracks(mockAlbum.tracks || []);
+    // Check if it's a playlist in the libraryStore first!
+    const playlist = libraryStore.getPlaylist(activeAlbum.id);
+    if (playlist) {
+      setAlbumTracks(playlist.tracks || []);
       setAlbumLoading(false);
       if (mainRef.current) {
         mainRef.current.scrollTop = 0;
@@ -1728,10 +1480,15 @@ function YourApp({ initialPlayerState }) {
     }
 
     if (isPlaying) {
-      audioRef.current.play().catch(e => {
-        console.warn("Playback error:", e);
-        setIsPlaying(false);
-      });
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => {
+          if (e.name !== 'AbortError') {
+            console.warn("Playback error:", e);
+            setIsPlaying(false);
+          }
+        });
+      }
     } else {
       audioRef.current.pause();
     }
@@ -2117,39 +1874,32 @@ function YourApp({ initialPlayerState }) {
   const handleOpenArtist = async (name) => {
     setActiveAlbum(null); // Close album details view
     setIsPlayerExpanded(false); // Collapse player
-    const found = relatedArtists.find(p => p.name.toLowerCase() === name.toLowerCase());
-    if (found) {
-      setActiveArtist(found);
-    } else {
-      // Create profile structure and update picture later from API
-      setActiveArtist({
-        name,
-        img: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=640&h=640&fit=crop&q=80',
-        subscribers: '1.2M',
-        listeners: '4.8M'
-      });
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/artist-image?q=${encodeURIComponent(name)}`);
-        if (res.ok) {
-          const imgData = await res.json();
-          if (imgData.url) {
-            setActiveArtist(prev => prev && prev.name === name ? { ...prev, img: resolveThumbnails(imgData).url } : prev);
-          }
+    setActiveArtist({
+      name,
+      img: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=640&h=640&fit=crop&q=80',
+      subscribers: '1.2M',
+      listeners: '4.8M'
+    });
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/artist-image?q=${encodeURIComponent(name)}`);
+      if (res.ok) {
+        const imgData = await res.json();
+        if (imgData.url) {
+          setActiveArtist(prev => prev && prev.name === name ? { ...prev, img: resolveThumbnails(imgData).url } : prev);
         }
-      } catch (e) {}
-    }
+      }
+    } catch (e) {}
     setIsSearching(false);
   };
 
   // Open Album / Playlist Details
   const handleOpenAlbum = (album) => {
     const albumId = album.id || album.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const mockAlbum = MOCK_ALBUMS[albumId];
     setActiveAlbum({
       id: albumId,
       title: album.title,
       artist: album.artist || 'Mics',
-      thumbnail: album.thumbnail || (mockAlbum ? mockAlbum.thumbnail : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80'),
+      thumbnail: album.thumbnail || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80',
       type: album.type || 'Playlist',
       year: album.year || '2024'
     });
@@ -2170,19 +1920,14 @@ function YourApp({ initialPlayerState }) {
 
   const handleConfirmCreatePlaylist = () => {
     const name = newPlaylistName.trim() || 'My Playlist';
-    setPlaylists(prev => [...prev, name]);
-    setLibraryItems(prev => [
-      {
-        id: `playlist-${Date.now()}`,
-        title: name,
-        artist: 'You',
-        type: 'Playlist',
-        thumbnail: playlistAddedSongs[0]?.thumbnail || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80',
-        duration: 0
-      },
-      ...prev
-    ]);
+    libraryStore.createPlaylist({
+      name,
+      description: newPlaylistDesc,
+      tracks: playlistAddedSongs,
+      source: 'user'
+    });
     setShowPlaylistModal(false);
+    showToast(`Created playlist "${name}"`);
   };
 
   // Scroll handler for Artist Profile Zoom
@@ -2200,20 +1945,31 @@ function YourApp({ initialPlayerState }) {
 
   // Library Filtering Logic
   const getFilteredLibraryItems = () => {
+    const playlistLibraryItems = playlists.map(playlist => ({
+      id: playlist.id,
+      title: playlist.name,
+      artist: playlist.source === 'user' ? 'You' : (playlist.source === 'spotify' ? 'Spotify' : 'YouTube Music'),
+      type: 'Playlist',
+      thumbnail: playlist.artwork || playlist.tracks[0]?.thumbnail || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80',
+      duration: 0
+    }));
+
+    const combined = [...playlistLibraryItems, ...libraryItems];
+
     if (libraryFilter === 'All') {
-      return libraryItems;
+      return combined;
     }
     if (libraryFilter === 'Playlists') {
-      return libraryItems.filter(item => item.type === 'Playlist');
+      return combined.filter(item => item.type === 'Playlist');
     }
     if (libraryFilter === 'Albums') {
-      return libraryItems.filter(item => item.type === 'Album');
+      return combined.filter(item => item.type === 'Album');
     }
     if (libraryFilter === 'Songs') {
-      return libraryItems.filter(item => item.type === 'Song');
+      return combined.filter(item => item.type === 'Song');
     }
     if (libraryFilter === 'Artists') {
-      const uniqueArtists = Array.from(new Set(libraryItems.map(item => item.artist)));
+      const uniqueArtists = Array.from(new Set(combined.map(item => item.artist)));
       return uniqueArtists.map(artist => ({
         id: `artist-${artist}`,
         title: artist,
@@ -2222,14 +1978,12 @@ function YourApp({ initialPlayerState }) {
         thumbnail: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=640&h=640&fit=crop&q=80'
       }));
     }
-    return libraryItems;
+    return combined;
   };
 
   const filteredItems = getFilteredLibraryItems();
 
-  const mockKey = activeArtist?.name?.toLowerCase() || '';
-  const mockArtist = MOCK_ARTISTS[mockKey];
-  const albumsToRender = mockArtist ? mockArtist.albums : artistTracks.slice(0, 4).map((track, idx) => ({
+  const albumsToRender = artistTracks.slice(0, 4).map((track, idx) => ({
     id: track.id,
     title: track.title,
     artist: activeArtist?.name || 'Unknown Artist',
@@ -2237,7 +1991,7 @@ function YourApp({ initialPlayerState }) {
     type: 'Album',
     year: 2024 - idx
   }));
-  const singlesToRender = mockArtist ? mockArtist.singles : artistTracks.slice(Math.min(4, artistTracks.length - 1)).map((track, idx) => ({
+  const singlesToRender = artistTracks.slice(Math.min(4, artistTracks.length - 1)).map((track, idx) => ({
     id: track.id,
     title: track.title,
     artist: activeArtist?.name || 'Unknown Artist',
@@ -2527,20 +2281,30 @@ function YourApp({ initialPlayerState }) {
               <span className="font-label-lg text-label-lg">New Playlist</span>
             </button>
             <div className="mt-4 px-4">
-              <div className="text-label-md font-label-md text-text-tertiary uppercase tracking-wider mb-2 font-bold">Your Playlists</div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-label-md font-label-md text-text-tertiary uppercase tracking-wider font-bold">Your Playlists</div>
+                <button 
+                  onClick={handleCreatePlaylist}
+                  className="p-1 hover:bg-white/10 rounded-full transition-colors active:scale-95 duration-100 flex items-center justify-center text-text-secondary hover:text-white"
+                  title="Create or Import Playlist"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                </button>
+              </div>
               <div className="flex flex-col gap-3">
                 {playlists.map((playlist, idx) => (
                   <button 
-                    key={idx}
+                    key={playlist.id || idx}
                     onClick={() => handleOpenAlbum({
-                      title: playlist,
-                      artist: 'Mics',
+                      id: playlist.id,
+                      title: playlist.name,
+                      artist: playlist.source === 'user' ? 'You' : (playlist.source === 'spotify' ? 'Spotify' : 'YouTube Music'),
                       type: 'Playlist',
                       year: '2024'
                     })}
                     className="text-body-md text-text-secondary hover:text-text-primary transition-colors truncate text-left w-full active:scale-95 duration-150"
                   >
-                    {playlist}
+                    {playlist.name}
                   </button>
                 ))}
               </div>
@@ -2580,7 +2344,7 @@ function YourApp({ initialPlayerState }) {
               {/* Optional space for a context menu / settings button if needed later */}
             </div>
             
-            <main className="relative z-10 h-full flex flex-col md:flex-row max-w-7xl mx-auto px-gutter pt-20 pb-8 md:py-8 gap-12 items-center md:items-start overflow-y-auto md:overflow-hidden">
+            <main className="relative z-10 h-full flex flex-col md:flex-row max-w-7xl mx-auto px-gutter pt-20 pb-8 md:py-8 gap-12 items-center md:items-start overflow-y-auto">
               {/* Left Column: Player Core */}
               <div className={`w-full ${playerLayout === 'cinematic' ? 'md:w-[568px]' : 'md:w-[450px]'} flex flex-col items-center md:items-start animate-fade-in shrink-0 transition-all duration-300`}>
                 {/* Artwork */}
@@ -2609,7 +2373,7 @@ function YourApp({ initialPlayerState }) {
                 ) : (
                   <motion.div 
                     layoutId="now-playing-artwork"
-                    className="relative group mb-8 w-[360px] h-[360px] md:w-[420px] md:h-[420px] overflow-hidden rounded-xl shadow-2xl"
+                    className="relative group mb-8 w-[320px] h-[320px] md:w-[420px] md:h-[420px] xl:w-[520px] xl:h-[520px] overflow-hidden rounded-xl shadow-2xl"
                   >
                     <img 
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" 
@@ -2808,12 +2572,12 @@ function YourApp({ initialPlayerState }) {
                               <p className="text-text-tertiary text-[11px] uppercase tracking-wider font-bold mb-2">Now playing</p>
                               <div className="flex items-center gap-4 p-2 rounded-xl bg-surface-container-highest/40 border border-white/5">
                                 <div 
-                                  style={{width:48,height:48,minWidth:48,minHeight:48}}
+                                  style={{width:40,height:40,minWidth:40,minHeight:40}}
                                   className="relative flex-shrink-0 bg-surface-container-high rounded-lg overflow-hidden"
                                 >
                                   <img 
-                                    width={48}
-                                    height={48}
+                                    width={40}
+                                    height={40}
                                     className="w-full h-full object-cover opacity-60"
                                     src={currentTrack.thumbnail}
                                     alt={currentTrack.title}
@@ -2865,12 +2629,12 @@ function YourApp({ initialPlayerState }) {
                                     className="flex items-center gap-4 p-2 rounded-xl group cursor-pointer hover:bg-surface-container-highest transition-colors"
                                   >
                                     <div 
-                                      style={{width:48,height:48,minWidth:48,minHeight:48}}
+                                      style={{width:40,height:40,minWidth:40,minHeight:40}}
                                       className="relative flex-shrink-0 bg-surface-container-high rounded-lg overflow-hidden"
                                     >
                                       <img 
-                                        width={48}
-                                        height={48}
+                                        width={40}
+                                        height={40}
                                         className="w-full h-full object-cover"
                                         src={track.thumbnail}
                                         alt={track.title}
@@ -2977,7 +2741,7 @@ function YourApp({ initialPlayerState }) {
               /* ARTIST PROFILE VIEW */
               <div className="flex flex-col gap-12">
                 {/* Artist Hero Banner */}
-                <section className="relative w-full h-[320px] overflow-hidden">
+                <section className="relative w-full h-[220px] md:h-[280px] xl:h-[340px] overflow-hidden">
                   <div className="absolute inset-0">
                     <img 
                       alt="Artist Cover" 
@@ -3178,7 +2942,7 @@ function YourApp({ initialPlayerState }) {
                   <section className="mb-12">
                     <h2 className="font-headline-lg text-headline-lg text-text-primary mb-6">Fans might also like</h2>
                     <div className="flex overflow-x-auto gap-10 pb-4 hide-scrollbar">
-                      {relatedArtists.map((artist) => (
+                      {computedRelatedArtists.map((artist) => (
                         <div 
                           key={artist.name} 
                           onClick={() => handleOpenArtist(artist.name)}
@@ -3205,9 +2969,9 @@ function YourApp({ initialPlayerState }) {
               /* ALBUM DETAILS VIEW */
               <div className="flex flex-col gap-8">
                 {/* Hero Section */}
-                <section className="hero-gradient h-[280px] flex items-end px-gutter pb-8 relative overflow-hidden">
+                <section className="hero-gradient h-[280px] md:h-[320px] xl:h-[380px] flex items-end px-gutter pb-8 relative overflow-hidden">
                   <div className="flex flex-col md:flex-row gap-8 items-end z-10 w-full animate-fade-in">
-                    <div className="shrink-0 rounded-lg overflow-hidden shadow-2xl bg-surface-container-high" style={{width:260,height:260}}>
+                    <div className="w-[180px] h-[180px] md:w-[220px] md:h-[220px] xl:w-[260px] xl:h-[260px] shrink-0 rounded-lg overflow-hidden shadow-2xl bg-surface-container-high">
                       <img 
                         alt="Album artwork" 
                         className="w-full h-full object-cover" 
@@ -3524,13 +3288,47 @@ function YourApp({ initialPlayerState }) {
                       <p className="text-body-md font-body-md text-text-secondary">Your collection of music and podcasts</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={handleCreatePlaylist}
-                    className="bg-text-primary text-bg-base font-label-lg text-label-lg px-6 py-2.5 rounded-full hover:bg-secondary transition-colors flex items-center gap-2 active:scale-95 duration-150"
-                  >
-                    <span className="material-symbols-outlined">add</span>
-                    New playlist
-                  </button>
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowUploadDropdown(prev => !prev)}
+                      className="bg-text-primary text-bg-base font-label-lg text-label-lg px-6 py-2.5 rounded-full hover:bg-secondary transition-colors flex items-center gap-2 active:scale-95 duration-150"
+                    >
+                      <span className="material-symbols-outlined">add</span>
+                      New Playlist
+                      <span className="material-symbols-outlined text-[18px]">arrow_drop_down</span>
+                    </button>
+                    
+                    {showUploadDropdown && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={() => setShowUploadDropdown(false)} 
+                        />
+                        <div className="absolute right-0 mt-2 w-48 rounded-xl bg-surface-container/95 border border-white/10 p-1.5 shadow-2xl backdrop-blur-md z-20 animate-fade-in flex flex-col gap-0.5">
+                          <button
+                            onClick={() => {
+                              handleCreatePlaylist();
+                              setShowUploadDropdown(false);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-primary hover:bg-white/5 transition-colors flex items-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">playlist_add</span>
+                            <span>Create Playlist</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowImportModal(true);
+                              setShowUploadDropdown(false);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-primary hover:bg-white/5 transition-colors flex items-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">link</span>
+                            <span>Import Link</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </header>
 
                 {/* Filter Chips */}
@@ -3575,18 +3373,27 @@ function YourApp({ initialPlayerState }) {
                   </div>
                 </div>
 
-                {libraryFilter === 'Songs' && filteredItems.length === 0 ? (
+                {filteredItems.length === 0 ? (
                   /* Library Empty State */
                   <div className="flex flex-col items-center justify-center pt-24 text-center">
                     <span className="material-symbols-outlined text-[60px] text-text-tertiary mb-6">music_note</span>
                     <h2 className="font-headline-lg text-headline-lg text-text-primary mb-2">Your library is empty</h2>
-                    <p className="font-body-lg text-body-lg text-text-secondary mb-8">Songs you save will appear here</p>
-                    <button 
-                      onClick={() => setActiveTab('explore')}
-                      className="bg-white text-black px-8 py-3 rounded-full font-label-lg text-label-lg font-bold hover:bg-secondary-fixed transition-colors active:scale-95 duration-150"
-                    >
-                      Find songs
-                    </button>
+                    <p className="font-body-lg text-body-lg text-text-secondary mb-8">Playlists and songs you save will appear here</p>
+                    <div className="flex items-center gap-4 justify-center">
+                      <button 
+                        onClick={() => setActiveTab('explore')}
+                        className="bg-white text-black px-8 py-3 rounded-full font-label-lg text-label-lg font-bold hover:bg-opacity-90 transition-colors active:scale-95 duration-150"
+                      >
+                        Find songs
+                      </button>
+                      <button 
+                        onClick={() => setShowImportModal(true)}
+                        className="bg-surface-container-highest text-text-primary border border-outline-variant px-8 py-3 rounded-full font-label-lg text-label-lg font-bold hover:bg-surface-container-high transition-colors active:scale-95 duration-150 flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">link</span>
+                        Import a playlist
+                      </button>
+                    </div>
                   </div>
                 ) : libraryViewMode === 'grid' ? (
                   /* Library Grid View */
@@ -3949,11 +3756,11 @@ function YourApp({ initialPlayerState }) {
                       .filter(Boolean)
                       .filter(name => name !== 'Mics')
                       .map(name => {
-                        const mock = MOCK_ARTISTS[name.toLowerCase()];
+                        const trackForArtist = libraryItems.find(item => item.artist === name);
                         return {
                           name,
-                          img: mock?.img || null,
-                          listeners: mock?.listeners || '0'
+                          img: trackForArtist?.thumbnail || null,
+                          listeners: '0'
                         };
                       });
                     return topArtists.length === 0 ? (
@@ -3967,9 +3774,9 @@ function YourApp({ initialPlayerState }) {
                           <div
                             key={artist.name}
                             onClick={() => handleOpenArtist(artist.name)}
-                            className="flex-shrink-0 flex flex-col items-center gap-3 w-24 cursor-pointer group"
+                            className="flex-shrink-0 flex flex-col items-center gap-3 w-[180px] cursor-pointer group"
                           >
-                            <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-white/30 transition-all duration-200 group-hover:scale-105 bg-gradient-to-br from-red-700/20 to-blue-900/20 flex items-center justify-center">
+                            <div className="relative w-[160px] h-[160px] rounded-full overflow-hidden border-2 border-white/10 group-hover:border-white/30 transition-all duration-200 group-hover:scale-105 bg-gradient-to-br from-red-700/20 to-blue-900/20 flex items-center justify-center">
                               {artist.img ? (
                                 <img src={artist.img} alt={artist.name} className="w-full h-full object-cover" />
                               ) : (
@@ -4043,7 +3850,7 @@ function YourApp({ initialPlayerState }) {
                       <div className="h-4 w-64 bg-white/5 rounded mb-5" />
                       <div className="flex gap-4">
                         {[1,2,3,4,5].map(i => (
-                          <div key={i} className="w-[160px] h-[160px] rounded-xl bg-white/5 flex-shrink-0" />
+                          <div key={i} className="w-[160px] h-[160px] md:w-[180px] md:h-[180px] xl:w-[200px] xl:h-[200px] rounded-xl bg-white/5 flex-shrink-0" />
                         ))}
                       </div>
                     </div>
@@ -4079,6 +3886,91 @@ function YourApp({ initialPlayerState }) {
                     </div>
                   </div>
                 )}
+                
+                {/* Mood Chips Selector */}
+                <div className="px-gutter pt-6 flex gap-3 overflow-x-auto hide-scrollbar shrink-0 select-none">
+                  {['Energizing', 'Focus', 'Workout', 'Party', 'Relaxing', 'Sad', 'Romance', 'Commute'].map((moodName) => {
+                    const moodKey = moodName.toLowerCase();
+                    const isActive = activeMood === moodKey;
+                    return (
+                      <button
+                        key={moodKey}
+                        onClick={() => {
+                          if (isActive) {
+                            setActiveMood(null);
+                          } else {
+                            setActiveMood(moodKey);
+                            if (!moodCache[moodKey]) {
+                              const match = getMoodMatch(moodKey);
+                              setMoodCache(prev => ({ ...prev, [moodKey]: match }));
+                            }
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-full font-bold text-label-md transition-all shrink-0 border duration-150 active:scale-95 ${
+                          isActive 
+                            ? 'bg-text-primary border-text-primary text-bg-base' 
+                            : 'bg-white/5 border-white/10 text-text-primary hover:bg-white/10 hover:border-white/20'
+                        }`}
+                      >
+                        {moodName}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Mood Mix Section */}
+                {activeMood && (
+                  <section className="px-gutter pt-4">
+                    <div className="flex justify-between items-end mb-6">
+                      <div>
+                        <p className="text-text-tertiary text-label-md uppercase tracking-widest font-bold">Personalized Mood Mix</p>
+                        <h2 className="font-headline-lg text-headline-lg capitalize">{activeMood} Mix</h2>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const mix = moodCache[activeMood] || [];
+                          if (mix.length > 0) handlePlayTrack(mix[0], mix, `home_${activeMood}_mood`);
+                        }}
+                        className="border border-outline-variant hover:bg-surface-container-high transition-colors text-label-md font-bold px-4 py-1.5 rounded-full active:scale-95 duration-100"
+                      >
+                        Play Mix
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-x-8 gap-y-2">
+                      {(() => {
+                        const mix = moodCache[activeMood] || [];
+                        if (mix.length === 0) {
+                          return <p className="text-text-secondary text-body-md col-span-3 py-4">Listen to more songs to unlock this mood mix!</p>;
+                        }
+                        return mix.slice(0, 6).map((track) => (
+                          <motion.div 
+                            key={track.id}
+                            onClick={() => handlePlayTrack(track, mix, `home_${activeMood}_mood`)}
+                            variants={cardVariants}
+                            initial="rest"
+                            whileHover="hover"
+                            whileTap="tap"
+                            className={`flex items-center gap-4 p-2 rounded-xl transition-colors group cursor-pointer ${
+                              currentTrack?.id === track.id ? 'bg-surface-container-highest' : 'hover:bg-surface-container-highest'
+                            }`}
+                          >
+                            <div className="relative rounded-lg overflow-hidden flex-shrink-0 bg-surface-container-high" style={{width:64,height:64}}>
+                              <img alt={track.title} className="w-full h-full object-cover" src={track.thumbnail} />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-body-lg text-body-lg truncate text-text-primary font-bold">{track.title}</p>
+                              <p className="font-body-md text-body-md truncate text-text-secondary">{track.artist}</p>
+                            </div>
+                          </motion.div>
+                        ));
+                      })()}
+                    </div>
+                  </section>
+                )}
+
                 {/* Speed Dial Section */}
                 <div className="speed-dial-section px-gutter pt-8 pb-4 animate-fade-in">
                   <div className="flex justify-between items-center mb-6">
@@ -4116,7 +4008,7 @@ function YourApp({ initialPlayerState }) {
                         whileHover="hover"
                         whileTap="tap"
                         animate={isEditingSpeedDial ? "editMode" : (currentTrack?.id === track.id && isPlaying ? "playing" : "rest")}
-                        className="speed-dial-tile flex-shrink-0 w-[160px] h-[160px] rounded-xl overflow-hidden relative group cursor-pointer bg-surface-container-high"
+                        className="speed-dial-tile flex-shrink-0 w-[160px] h-[160px] md:w-[180px] md:h-[180px] xl:w-[200px] xl:h-[200px] rounded-xl overflow-hidden relative group cursor-pointer bg-surface-container-high"
                       >
                         <img 
                           className="w-full h-full object-cover select-none pointer-events-none" 
@@ -4170,61 +4062,6 @@ function YourApp({ initialPlayerState }) {
                   </div>
                 </div>
 
-                {/* Mood Mix Section */}
-                {false && (
-                  <section className="px-gutter pt-4">
-                    <div className="flex justify-between items-end mb-6">
-                      <div>
-                        <p className="text-text-tertiary text-label-md uppercase tracking-widest font-bold">Personalized Mood Mix</p>
-                        <h2 className="font-headline-lg text-headline-lg">{activeChip} Mix</h2>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          const key = activeChip.toLowerCase() === 'moods' ? 'moody' : (activeChip.toLowerCase() === 'podcasts' ? 'podcast' : activeChip.toLowerCase());
-                          const mix = getMoodMatch(key);
-                          if (mix.length > 0) handlePlayTrack(mix[0], mix, 'home_mood');
-                        }}
-                        className="border border-outline-variant hover:bg-surface-container-high transition-colors text-label-md font-bold px-4 py-1.5 rounded-full active:scale-95 duration-100"
-                      >
-                        Play Mix
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-x-8 gap-y-2">
-                      {(() => {
-                        const key = activeChip.toLowerCase() === 'moods' ? 'moody' : (activeChip.toLowerCase() === 'podcasts' ? 'podcast' : activeChip.toLowerCase());
-                        const mix = getMoodMatch(key);
-                        if (mix.length === 0) {
-                          return <p className="text-text-secondary text-body-md col-span-3 py-4">Listen to more songs to unlock this mood mix!</p>;
-                        }
-                        return mix.slice(0, 6).map((track) => (
-                          <motion.div 
-                            key={track.id}
-                            onClick={() => handlePlayTrack(track, mix, 'home_mood')}
-                            variants={cardVariants}
-                            initial="rest"
-                            whileHover="hover"
-                            whileTap="tap"
-                            className={`flex items-center gap-4 p-2 rounded-xl transition-colors group cursor-pointer ${
-                              currentTrack?.id === track.id ? 'bg-surface-container-highest' : 'hover:bg-surface-container-highest'
-                            }`}
-                          >
-                            <div className="relative rounded-lg overflow-hidden flex-shrink-0 bg-surface-container-high" style={{width:64,height:64}}>
-                              <img alt={track.title} className="w-full h-full object-cover" src={track.thumbnail} />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-body-lg text-body-lg truncate text-text-primary font-bold">{track.title}</p>
-                              <p className="font-body-md text-body-md truncate text-text-secondary">{track.artist}</p>
-                            </div>
-                          </motion.div>
-                        ));
-                      })()}
-                    </div>
-                  </section>
-                )}
-
                 {/* Quick Picks Section */}
                 <section className="px-gutter pt-4">
                   <div className="flex justify-between items-end mb-4">
@@ -4244,7 +4081,15 @@ function YourApp({ initialPlayerState }) {
                   </div>
                   <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-x-8 gap-y-2">
                     {(() => {
+                      const hasEnoughHistory = listenHistory.length >= 3;
                       const items = quickPicks.length > 0 ? quickPicks : (sections.find(s => s.title.toLowerCase().includes('quick'))?.contents || []);
+                      if (items.length === 0 || (!hasEnoughHistory && quickPicks.length === 0)) {
+                        return (
+                          <div className="col-span-full">
+                            <OnboardingEmptyState onExplore={() => setActiveTab('explore')} />
+                          </div>
+                        );
+                      }
                       return items.slice(0, 6).map((track) => (
                         <motion.div 
                           key={track.id}
@@ -4313,113 +4158,156 @@ function YourApp({ initialPlayerState }) {
                 />
 
                 {/* Mixed For You Section */}
-                <section className="px-gutter">
-                  <div className="flex justify-between items-end mb-6">
-                    <div>
-                      <p className="text-text-tertiary text-label-md uppercase tracking-widest font-bold">Curated for your taste</p>
-                      <h2 className="font-headline-lg text-headline-lg">Mixed For You</h2>
+                {mixedForYou.length > 0 && (
+                  <section className="px-gutter">
+                    <div className="flex justify-between items-end mb-6">
+                      <div>
+                        <p className="text-text-tertiary text-label-md uppercase tracking-widest font-bold">Curated for your taste</p>
+                        <h2 className="font-headline-lg text-headline-lg">Mixed For You</h2>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-6 overflow-x-auto hide-scrollbar">
-                    {mixedForYou.slice(0, 10).map((album, idx) => {
-                      const isLiked = libraryItems.some(i => i.id === album.id);
-                      return (
-                        <motion.div 
-                          key={album.id || idx} 
-                        onClick={() => handlePlayTrack(album, mixedForYou, 'home_mixed_for_you')}
-                          variants={cardVariants}
-                          initial="rest"
-                          whileHover="hover"
-                          whileTap="tap"
-                          className="flex-shrink-0 group cursor-pointer" style={{width:180}}
-                        >
-                          <div className="rounded-xl overflow-hidden mb-3 relative bg-surface-container-high" style={{width:180,height:180}}>
-                            <img alt={album.title} className="w-full h-full object-cover" src={album.thumbnail} />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                              <div className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg">
-                                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+                    <div className="flex gap-6 overflow-x-auto hide-scrollbar">
+                      {mixedForYou.slice(0, 10).map((album, idx) => {
+                        const isLiked = libraryItems.some(i => i.id === album.id);
+                        return (
+                          <motion.div 
+                            key={album.id || idx} 
+                            onClick={() => handlePlayTrack(album, mixedForYou, 'home_mixed_for_you')}
+                            variants={cardVariants}
+                            initial="rest"
+                            whileHover="hover"
+                            whileTap="tap"
+                            className="flex-shrink-0 group cursor-pointer w-[160px] md:w-[180px] xl:w-[200px]"
+                          >
+                            <div className="rounded-xl overflow-hidden mb-3 relative bg-surface-container-high aspect-square w-full">
+                              <img alt={album.title} className="w-full h-full object-cover" src={album.thumbnail} />
+                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <div className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg">
+                                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <h4 className="font-body-md text-body-md text-text-primary line-clamp-1">{album.title}</h4>
-                          <p 
-                            className="font-label-md text-label-md text-text-tertiary hover:underline cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenArtist(album.artist);
-                            }}
-                          >
-                            {album.artist}
-                          </p>
-                        </motion.div>
-                      );
-                    })}
-                    {mixedForYou.length === 0 && (
-                      <div className="w-full h-[180px] bg-surface-container-low rounded-xl flex items-center justify-center">
-                        <p className="text-text-secondary">Start playing tracks to get personalized mixes!</p>
-                      </div>
-                    )}
-                  </div>
-                </section>
+                            <h4 className="font-body-md text-body-md text-text-primary line-clamp-1">{album.title}</h4>
+                            <p 
+                              className="font-label-md text-label-md text-text-tertiary hover:underline cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenArtist(album.artist);
+                              }}
+                            >
+                              {album.artist}
+                            </p>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
 
                 {/* Discovery Section */}
-                <section className="px-gutter">
-                  <div className="flex justify-between items-end mb-6">
-                    <div>
-                      <p className="text-text-tertiary text-label-md uppercase tracking-widest font-bold">New sounds and fresh releases</p>
-                      <h2 className="font-headline-lg text-headline-lg">Discovery</h2>
+                {(() => {
+                  const items = discoveryPicks.length > 0 ? discoveryPicks : newReleases;
+                  return items.length > 0 && (
+                    <section className="px-gutter">
+                      <div className="flex justify-between items-end mb-6">
+                        <div>
+                          <p className="text-text-tertiary text-label-md uppercase tracking-widest font-bold">New sounds and fresh releases</p>
+                          <h2 className="font-headline-lg text-headline-lg">Discovery</h2>
+                        </div>
+                      </div>
+                      <div className="flex gap-6 overflow-x-auto hide-scrollbar">
+                        {items.slice(0, 10).map((album, idx) => (
+                          <motion.div 
+                            key={album.id || idx} 
+                            onClick={() => {
+                              if (album.type === 'ALBUM' || album.type === 'PLAYLIST' || album.playlistId) {
+                                handleOpenAlbum({
+                                  id: album.id || album.playlistId,
+                                  title: album.title,
+                                  artist: album.artist,
+                                  thumbnail: album.thumbnail,
+                                  type: album.playlistId ? 'Playlist' : 'Album',
+                                  year: '2024'
+                                });
+                              } else {
+                                const songItems = items.filter(i => i.type !== 'ALBUM' && i.type !== 'PLAYLIST' && !i.playlistId);
+                                handlePlayTrack(album, songItems, 'home_new_releases');
+                              }
+                            }}
+                            variants={cardVariants}
+                            initial="rest"
+                            whileHover="hover"
+                            whileTap="tap"
+                            className="flex-shrink-0 group cursor-pointer w-[160px] md:w-[180px] xl:w-[200px]"
+                          >
+                            <div className="rounded-xl overflow-hidden mb-3 relative bg-surface-container-high aspect-square w-full">
+                              <img alt={album.title} className="w-full h-full object-cover" src={album.thumbnail} />
+                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <div className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg">
+                                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+                                </div>
+                              </div>
+                            </div>
+                            <h4 className="font-body-md text-body-md text-text-primary line-clamp-1">{album.title}</h4>
+                            <p 
+                              className="font-label-md text-label-md text-text-tertiary hover:underline cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenArtist(album.artist);
+                              }}
+                            >
+                              {album.artist}
+                            </p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })()}
+
+                {/* Forgotten Favorites Section */}
+                {forgottenFavorites.length >= 3 && (
+                  <section className="px-gutter">
+                    <div className="flex justify-between items-end mb-6">
+                      <div>
+                        <p className="text-text-tertiary text-label-md uppercase tracking-widest font-bold">Bring back the memories</p>
+                        <h2 className="font-headline-lg text-headline-lg">Forgotten Favorites</h2>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-6 overflow-x-auto hide-scrollbar">
-                    {(() => {
-                      const items = discoveryPicks.length > 0 ? discoveryPicks : newReleases;
-                      return items.slice(0, 10).map((album, idx) => (
+                    <div className="flex gap-6 overflow-x-auto hide-scrollbar">
+                      {forgottenFavorites.slice(0, 10).map((track, idx) => (
                         <motion.div 
-                          key={album.id || idx} 
-                          onClick={() => {
-                            if (album.type === 'ALBUM' || album.type === 'PLAYLIST' || album.playlistId) {
-                              handleOpenAlbum({
-                                id: album.id || album.playlistId,
-                                title: album.title,
-                                artist: album.artist,
-                                thumbnail: album.thumbnail,
-                                type: album.playlistId ? 'Playlist' : 'Album',
-                                year: '2024'
-                              });
-                            } else {
-                              const songItems = items.filter(i => i.type !== 'ALBUM' && i.type !== 'PLAYLIST' && !i.playlistId);
-                              handlePlayTrack(album, songItems, 'home_new_releases');
-                            }
-                          }}
+                          key={track.id || idx} 
+                          onClick={() => handlePlayTrack(track, forgottenFavorites, 'home_forgotten_favorites')}
                           variants={cardVariants}
                           initial="rest"
                           whileHover="hover"
                           whileTap="tap"
-                          className="flex-shrink-0 group cursor-pointer" style={{width:180}}
+                          className="flex-shrink-0 group cursor-pointer w-[160px] md:w-[180px] xl:w-[200px]"
                         >
-                          <div className="rounded-xl overflow-hidden mb-3 relative bg-surface-container-high" style={{width:180,height:180}}>
-                            <img alt={album.title} className="w-full h-full object-cover" src={album.thumbnail} />
+                          <div className="rounded-xl overflow-hidden mb-3 relative bg-surface-container-high aspect-square w-full">
+                            <img alt={track.title} className="w-full h-full object-cover" src={track.thumbnail} />
                             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                               <div className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg">
                                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
                               </div>
                             </div>
                           </div>
-                          <h4 className="font-body-md text-body-md text-text-primary line-clamp-1">{album.title}</h4>
+                          <h4 className="font-body-md text-body-md text-text-primary line-clamp-1">{track.title}</h4>
                           <p 
                             className="font-label-md text-label-md text-text-tertiary hover:underline cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenArtist(album.artist);
+                              handleOpenArtist(track.artist);
                             }}
                           >
-                            {album.artist}
+                            {track.artist}
                           </p>
                         </motion.div>
-                      ));
-                    })()}
-                  </div>
-                </section>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
                 {/* Curated Mixed For You Banner */}
                 <section className="px-gutter">
@@ -4484,7 +4372,7 @@ function YourApp({ initialPlayerState }) {
             <motion.div 
               layoutId="now-playing-artwork"
               onClick={() => setIsPlayerExpanded(true)}
-              className="rounded-lg overflow-hidden flex-shrink-0 bg-surface-container-high cursor-pointer hover:scale-105 transition-transform" style={{width:56,height:56}}
+              className="rounded-lg overflow-hidden flex-shrink-0 bg-surface-container-high cursor-pointer hover:scale-105 transition-transform" style={{width:52,height:52}}
             >
               <img 
                 alt="Playing album art" 
@@ -4808,173 +4696,29 @@ function YourApp({ initialPlayerState }) {
         )}
       </AnimatePresence>
 
-      {/* ─── Create Playlist Modal ─── */}
-      <AnimatePresence>
-        {showPlaylistModal && (
-          <motion.div
-            key="playlist-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          >
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-              onClick={() => setShowPlaylistModal(false)}
-            />
-            {/* Ambient glows */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full blur-[120px] opacity-30" style={{ backgroundColor: 'rgba(255, 85, 64, 0.2)' }} />
-              <div className="absolute top-1/2 left-1/4 w-[500px] h-[500px] rounded-full blur-[100px] opacity-20" style={{ backgroundColor: 'rgba(72, 143, 255, 0.1)' }} />
-            </div>
+      <CreatePlaylistModal
+        isOpen={showPlaylistModal}
+        onClose={() => setShowPlaylistModal(false)}
+        newPlaylistName={newPlaylistName}
+        setNewPlaylistName={setNewPlaylistName}
+        newPlaylistDesc={newPlaylistDesc}
+        setNewPlaylistDesc={setNewPlaylistDesc}
+        playlistSongSearch={playlistSongSearch}
+        setPlaylistSongSearch={setPlaylistSongSearch}
+        playlistAddedSongs={playlistAddedSongs}
+        setPlaylistAddedSongs={setPlaylistAddedSongs}
+        libraryItems={libraryItems}
+        onConfirm={handleConfirmCreatePlaylist}
+        onOpenImport={() => setShowImportModal(true)}
+      />
 
-            {/* Card */}
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-              className="relative bg-surface-container/90 backdrop-blur-xl border border-white/10 rounded-[24px] w-full max-w-[700px] max-h-[90vh] shadow-2xl flex flex-col overflow-hidden"
-            >
-              {/* Top section: cover + name/desc */}
-              <div className="p-8 pb-4 flex gap-8">
-                {/* Cover placeholder */}
-                <div className="w-[170px] h-[170px] rounded-xl bg-gradient-to-br from-surface-container-highest to-surface-variant flex-shrink-0 relative group overflow-hidden cursor-pointer">
-                  {playlistAddedSongs[0] ? (
-                    <img src={playlistAddedSongs[0].thumbnail} alt="cover" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-text-secondary">
-                      <span className="material-symbols-outlined text-5xl mb-2">music_note</span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center">
-                    <span className="material-symbols-outlined text-white mb-1">add_a_photo</span>
-                    <span className="text-label-md text-white font-medium">Add Cover</span>
-                  </div>
-                </div>
-
-                {/* Name + desc */}
-                <div className="flex-1 flex flex-col gap-4">
-                  <input
-                    autoFocus
-                    type="text"
-                    value={newPlaylistName}
-                    onChange={e => setNewPlaylistName(e.target.value)}
-                    placeholder="My Playlist"
-                    className="bg-transparent border-none p-0 text-[28px] font-bold text-text-primary placeholder-text-tertiary focus:ring-0 w-full outline-none"
-                  />
-                  <textarea
-                    value={newPlaylistDesc}
-                    onChange={e => setNewPlaylistDesc(e.target.value)}
-                    placeholder="Describe your vibe..."
-                    rows={3}
-                    className="bg-white/5 border border-white/10 rounded-xl p-4 text-body-md text-text-primary placeholder-text-secondary focus:bg-white/10 focus:border-white/20 focus:ring-0 transition-all resize-none outline-none"
-                  />
-                  <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-2 bg-surface-variant/50 hover:bg-surface-variant px-4 py-2 rounded-full border border-white/5 transition-colors text-label-md text-text-primary">
-                      <span className="material-symbols-outlined text-sm">public</span>
-                      Public
-                      <span className="material-symbols-outlined text-sm">arrow_drop_down</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Song search + suggestions */}
-              <div className="px-8 pb-4 flex flex-col gap-4 overflow-hidden flex-1">
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">search</span>
-                  <input
-                    type="text"
-                    value={playlistSongSearch}
-                    onChange={e => setPlaylistSongSearch(e.target.value)}
-                    placeholder="Add songs"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-body-md text-text-primary placeholder-text-secondary focus:bg-white/10 focus:ring-0 transition-all outline-none"
-                  />
-                </div>
-
-                <div className="flex-1 overflow-y-auto pr-1" style={{ maxHeight: 220 }}>
-                  {/* Added songs */}
-                  {playlistAddedSongs.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-label-md font-bold text-text-tertiary uppercase tracking-wider mb-2">Added</h4>
-                      <div className="space-y-1">
-                        {playlistAddedSongs.map(track => (
-                          <div key={track.id} className="flex items-center gap-4 p-2 rounded-xl bg-white/5">
-                            <img src={track.thumbnail} alt={track.title} className="w-10 h-10 rounded-lg object-cover" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-body-md font-medium text-text-primary truncate">{track.title}</p>
-                              <p className="text-label-md text-text-secondary truncate">{track.artist}</p>
-                            </div>
-                            <button
-                              onClick={() => setPlaylistAddedSongs(prev => prev.filter(t => t.id !== track.id))}
-                              className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
-                            >
-                              <span className="material-symbols-outlined text-text-secondary text-sm">close</span>
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Suggestions from library or current queue */}
-                  <h4 className="text-label-md font-bold text-text-tertiary uppercase tracking-wider mb-2">Suggested for you</h4>
-                  <div className="space-y-1">
-                    {libraryItems
-                      .filter(i => i && i.type === 'Song')
-                      .filter(i => !playlistAddedSongs.some(a => a && a.id === i.id))
-                      .filter(i => {
-                        if (!playlistSongSearch) return true;
-                        const titleMatch = i.title && typeof i.title === 'string' && i.title.toLowerCase().includes(playlistSongSearch.toLowerCase());
-                        const artistMatch = i.artist && typeof i.artist === 'string' && i.artist.toLowerCase().includes(playlistSongSearch.toLowerCase());
-                        return titleMatch || artistMatch;
-                      })
-                      .slice(0, 8)
-                      .map(track => (
-                        <div key={track.id} className="flex items-center gap-4 p-2 rounded-xl hover:bg-white/5 transition-all group">
-                          <img src={track.thumbnail} alt={track.title} className="w-10 h-10 rounded-lg object-cover" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-body-md font-medium text-text-primary truncate">{track.title}</p>
-                            <p className="text-label-md text-text-secondary truncate">{track.artist}</p>
-                          </div>
-                          <button
-                            onClick={() => setPlaylistAddedSongs(prev => [...prev, track])}
-                            className="px-4 py-1.5 rounded-full border border-white/10 hover:border-white/30 text-label-md transition-all text-text-primary whitespace-nowrap"
-                          >
-                            Add
-                          </button>
-                        </div>
-                      ))
-                    }
-                    {libraryItems.filter(i => i && i.type === 'Song').length === 0 && (
-                      <p className="text-label-md text-text-secondary py-4 text-center">Like some songs first to add them here!</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer actions */}
-              <div className="p-6 border-t border-white/5 flex justify-end gap-4">
-                <button
-                  onClick={() => setShowPlaylistModal(false)}
-                  className="px-6 py-2.5 rounded-full text-label-lg font-medium text-text-primary hover:bg-white/5 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmCreatePlaylist}
-                  className="px-8 py-2.5 rounded-full bg-text-primary text-bg-base text-label-lg font-bold hover:opacity-90 transition-all active:scale-95 duration-150"
-                >
-                  Create Playlist
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ImportPlaylistModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportSuccess={() => {
+          showToast("Imported playlist successfully!");
+        }}
+      />
 
       <AnimatePresence>
         {toastMessage && (
@@ -4994,11 +4738,13 @@ function YourApp({ initialPlayerState }) {
   );
 }
 
-export default function App({ initialPlayerState }) {
+export default function App({ initialPlayerState, convexUser, sessionToken, onLogout }) {
   return (
-    <>
-      <YourApp initialPlayerState={initialPlayerState} />
-      {process.env.NODE_ENV === "development" && <Agentation />}
-    </>
+    <YourApp
+      initialPlayerState={initialPlayerState}
+      convexUser={convexUser}
+      sessionToken={sessionToken}
+      onLogout={onLogout}
+    />
   );
 }

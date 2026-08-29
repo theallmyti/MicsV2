@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import type { Track, UserProfile, ListenEvent, RecommendationResult, MoodKey } from "./types.ts";
+import type { Track, UserProfile, ListenEvent, MoodKey } from "./types.ts";
 import { getListenHistory } from "./listenStore.ts";
 import {
   getMixedForYou,

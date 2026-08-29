@@ -36,3 +36,5 @@ ui-ux-pro-max-skill/
 # Temporary cache and scratch files
 cache/
 scratch/
+dev-dist/
+graphify-out/

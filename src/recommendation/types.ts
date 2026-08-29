@@ -134,3 +134,13 @@ export type RecommendationReason =
   | "recently_played_artist"
   | "speed_dial_affinity"
   | "completion_rate_signal";
+
+export type MoodKey =
+  | "energizing"
+  | "focus"
+  | "workout"
+  | "party"
+  | "relaxing"
+  | "sad"
+  | "romance"
+  | "commute";

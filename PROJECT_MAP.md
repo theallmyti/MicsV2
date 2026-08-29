@@ -61,7 +61,10 @@ Since YouTube images have strict CORS policies, the server provides an `/api/ima
 │   ├── main.jsx           # React entry point
 │   └── main.ts            # Vite entry point (TS variant)
 ├── public/                # Static public files
-├── server.js              # Express Backend: API, Streaming logic, Transcoding
+├── server/                # Express Backend: API, Streaming logic, Transcoding
+│   ├── index.ts           # Server entry point
+│   ├── routes/            # API Route handlers
+│   └── importers/         # Playlist importers (YT, Spotify)
 ├── package.json           # Dependencies (React, Express, yt-dlp, Puppeteer)
 └── vite.config.js         # Frontend build configuration
 ```
@@ -70,10 +73,10 @@ Since YouTube images have strict CORS policies, the server provides an `/api/ima
 
 ## 5. Critical Files for Models
 
-### `server.js`
+### `server/index.ts`
 - **Streaming Logic**: See `app.get('/api/stream/:id')`.
 - **Extraction Logic**: `extractPrimary` and `getAudioUrlViaPuppeteer`.
-- **Transcoding**: Look for the `spawn('ffmpeg', ...)` call.
+- **Transcoding**: Look for the streaming proxy and cache pipeline.
 
 ### `src/App.jsx`
 - **Audio Engine**: Managed via `audioRef` and a set of `useEffect` hooks for audio events.
@@ -98,5 +101,5 @@ npm install
 ```
 
 ### Development:
-1. Start the backend: `node server.js`
-2. Start the frontend: `npm run dev`
+1. Start all services concurrently: `npm run dev:all`
+   *(or individually: `npx tsx server/index.ts` + `npm run dev` + `npx convex dev`)*

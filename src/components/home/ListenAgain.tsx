@@ -136,8 +136,7 @@ const ListenAgainCard: React.FC<ListenAgainCardProps> = ({
       initial="hidden"
       animate="visible"
       transition={{ delay: staggerDelay }}
-      className="flex-shrink-0 snap-start group cursor-pointer"
-      style={{ width: 160 }}
+      className="flex-shrink-0 snap-start group cursor-pointer w-[160px] md:w-[180px] xl:w-[200px]"
       onClick={onClick}
     >
       <motion.div
@@ -145,8 +144,7 @@ const ListenAgainCard: React.FC<ListenAgainCardProps> = ({
         initial="rest"
         whileHover="hover"
         whileTap="tap"
-        className="rounded-xl overflow-hidden mb-3 relative bg-surface-container-high"
-        style={{ width: 160, height: 160 }}
+        className="rounded-xl overflow-hidden mb-3 relative bg-surface-container-high aspect-square w-full"
       >
         {/* Artwork Thumbnail */}
         <img 

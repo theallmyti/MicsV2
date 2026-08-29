@@ -28,9 +28,9 @@ export const Ease = {
  * Otherwise, returns an empty object so the animation degrades to instant state swaps.
  * @param animation - Framer Motion variant configuration object
  */
-export const motionSafe = (animation: object): object => {
+export const motionSafe = <T extends object>(animation: T): T => {
   if (typeof window !== "undefined" && window.matchMedia) {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? {} : animation;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? {} as any : animation;
   }
   return animation;
 };

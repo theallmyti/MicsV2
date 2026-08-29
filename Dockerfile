@@ -4,7 +4,9 @@ FROM node:20-bookworm-slim
 RUN apt-get update && apt-get install -y \
     chromium \
     python3 \
+    python3-pip \
     ffmpeg \
+    && pip3 install --break-system-packages yt-dlp \
     && rm -rf /var/lib/apt/lists/*
 
 # Tell Puppeteer to use the system Chromium we just installed
@@ -27,4 +29,4 @@ COPY . .
 EXPOSE 3001
 
 # Run the server
-CMD ["node", "server.js"]
+CMD ["npx", "tsx", "server/index.ts"]

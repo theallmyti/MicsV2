@@ -144,7 +144,7 @@ export const useAudioAnalyser = (audioRef: RefObject<HTMLAudioElement | null>, b
     const updateFrequencies = () => {
       if (!analyserRef.current || !dataArrayRef.current) return;
 
-      analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+      analyserRef.current.getByteFrequencyData(dataArrayRef.current as any);
       const data = dataArrayRef.current;
       const step = Math.floor(data.length / barCount) || 1;
       const nextFreqs = new Array(barCount);

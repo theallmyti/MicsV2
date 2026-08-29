@@ -39,13 +39,7 @@ export const speedDialTileVariants = {
   rest: { scale: 1, rotate: 0 },
   hover: motionSafe({ scale: 1.05, transition: Ease.springSnappy }),
   tap: motionSafe({ scale: 0.95, transition: { duration: Duration.instant / 1000 } }),
-  playing: motionSafe({ 
-    boxShadow: [
-      "0 0 0 2px #ff5540, 0 0 16px rgba(255,85,64,0.2)",
-      "0 0 0 2px #ff5540, 0 0 28px rgba(255,85,64,0.45)"
-    ],
-    transition: { boxShadow: { duration: 1.4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" } } 
-  }),
+  playing: motionSafe({ scale: 1 }),
   editMode: motionSafe({ 
     rotate: ["-0.5deg", "0.5deg"],
     transition: { rotate: { duration: 0.28, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" } } 

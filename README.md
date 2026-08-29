@@ -1,66 +1,140 @@
-# Mics 🎵
+# Mics V2 🎵
 
-Mics is a sleek, minimalist, high-performance desktop music player built with React, Vite, and TailwindCSS. It fetches streams directly from YouTube Music, delivering an ad-free, premium listening experience with an ultra-modern 2026-style interface.
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Convex](https://img.shields.io/badge/Convex-Auth_%26_DB-FF5A5F?logo=convex&logoColor=white)](https://convex.dev/)
+[![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 🚀 Features
+**Mics V2** is a minimalist, high-performance web music streaming application. Powered by YouTube Music and enhanced with real-time audio analysis, dynamic ambient background illumination, cloud database sync via Convex, and a resilient streaming pipeline.
 
-- **Ad-Free Streaming**: Listen to any song from the global YouTube Music library with zero interruptions.
-- **Resilient Audio Pipeline**: Uses `yt-dlp` for lightning-fast stream extraction, with a seamless automated fallback to a headless Stealth Puppeteer browser if bot detection kicks in.
-- **Ultra-Modern UI**: Features a "2026-style" Bento Grid layout for trending songs, heavy glassmorphism, dynamic gradients, and fluid micro-animations.
-- **Smart Queue & Suggestions**: Automatically generates a continuous "Up Next" queue based on the currently playing track.
-- **Local Library**: Persists your 'Liked Songs' and 'Recently Played' history locally.
-- **Background Playback**: Optimized for uninterrupted background listening.
+---
 
-## 🛠️ Tech Stack
+## ✨ Features
 
-**Frontend:**
-- React 18
-- Vite
-- TailwindCSS (with custom design system)
-- Google Material Symbols
+- **Ad-Free Music Streaming**: Stream tracks from YouTube Music with low-latency direct audio proxying.
+- **Dynamic Ambient Player UI**: Real-time canvas color extraction that dynamically derives vibrant atmospheric gradients and blurs from album artwork.
+- **Resilient Audio Pipeline**:
+  - Primary extraction with `yt-dlp` using optimized Android/iOS client headers to eliminate bot blocks and `403 Forbidden` errors.
+  - Automatic local chunk caching (`206 Partial Content` audio streaming).
+  - Headless Puppeteer stealth fallback when deep interception is required.
+- **Playlist Importers**: Effortlessly import playlists from **YouTube Music** and **Spotify** by simply pasting the URL.
+- **Cloud Sync & Auth with Convex**: Seamless user authentication, cloud library persistence, playlist management, and listening history.
+- **Smart Recommendations & Discovery**:
+  - Context-aware "Up Next" queues generated on the fly.
+  - Global & national trending charts merged from iTunes RSS and YouTube Music.
+  - Local listening history tracking and adaptive recommendations.
+- **PWA Ready**: Offline caching, service workers, and installable as a native-feeling desktop app.
 
-**Backend:**
-- Node.js & Express
-- `ytmusic-api` for metadata, search, and suggestions
-- `youtube-dl-exec` for primary stream URL extraction
-- `puppeteer-extra` & `puppeteer-extra-plugin-stealth` for resilient fallback extraction
-- CORS-enabled local streaming proxy
+---
 
-## 📦 Installation & Setup
+## 🛠️ Architecture & Tech Stack
 
-1. **Clone the repository**
+```
+MicsV2/
+├── convex/                # Convex Cloud database schemas, auth, and queries
+├── server/                # Express TypeScript Backend (Port 3001)
+│   ├── index.ts           # Streaming proxy, search, trending, and audio pipeline
+│   ├── routes/            # Modular route controllers (e.g., /api/import)
+│   └── importers/         # YouTube & Spotify playlist parsers and importers
+├── src/                   # React 19 + TypeScript Frontend (Port 5173)
+│   ├── components/        # Modals, playlist managers, home sections
+│   ├── motion/            # Framer Motion design tokens, hooks, & animations
+│   ├── store/             # Local and reactive library stores
+│   ├── history/           # Listening history & playback tracking
+│   ├── App.jsx            # Main music player interface
+│   └── index.css          # Design system, glassmorphism, & ambient effects
+├── run-all.js             # Concurrent process runner (Convex + Backend + Vite)
+├── run.bat                # 1-Click Windows desktop launcher
+├── Dockerfile             # Container definition with Chromium & FFmpeg
+└── docker-compose.yml     # Multi-container orchestration
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- **Node.js** (v18.0.0 or higher recommended)
+- **npm** (v9.0.0+)
+- **Python / yt-dlp** (installed and available on PATH for local extraction)
+
+### Installation
+
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/theallmyti/MicsV2.git
    cd MicsV2
    ```
 
-2. **Install dependencies**
+2. **Install dependencies:**
    ```bash
    npm install
    ```
-   *(Note: Ensure you have Node.js and a working installation of Python/yt-dlp if running locally)*
 
-3. **Start the development servers**
-   
-   The project requires both the Node.js backend proxy and the Vite frontend to be running simultaneously.
-
-   **Terminal 1 (Backend Server):**
-   ```bash
-   node server.js
+3. **Configure Environment:**
+   Create or verify your `.env.local` file:
+   ```env
+   CONVEX_DEPLOYMENT=your-convex-deployment-id
+   VITE_CONVEX_URL=https://your-deployment.convex.cloud
+   VITE_CONVEX_SITE_URL=https://your-deployment.convex.site
    ```
-   *Runs on http://localhost:3001*
 
-   **Terminal 2 (Frontend UI):**
-   ```bash
-   npm run dev
-   ```
-   *Runs on http://localhost:5173*
+---
 
-## 🏗️ Architecture Notes
+## 💻 Running the App
 
-The application uses a hybrid stream extraction strategy to bypass strict rate-limiting:
-1. **Primary**: Uses `yt-dlp` to directly fetch the highest quality `googlevideo` audio stream URL.
-2. **Fallback**: If `yt-dlp` is blocked or fails, it boots a semaphore-limited Headless Chromium instance equipped with stealth plugins to intercept network requests and extract the raw MIME audio stream directly from the browser cache, guaranteeing uptime.
+### Option 1: One-Click Launcher (Windows)
+Double-click [`run.bat`](./run.bat) in the project root to start Convex Dev, Express Backend, and Vite Frontend concurrently.
+
+### Option 2: Unified Command (Cross-Platform)
+```bash
+npm run dev:all
+```
+
+### Option 3: Individual Terminals
+- **Convex Database:**
+  ```bash
+  npx convex dev
+  ```
+- **Express Backend (Port 3001):**
+  ```bash
+  npx tsx server/index.ts
+  ```
+- **Vite Frontend (Port 5173):**
+  ```bash
+  npm run dev
+  ```
+
+---
+
+## 🌐 API Reference
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/` | `GET` | API Server Health status & browser landing page |
+| `/api/search?q=:query` | `GET` | Search YouTube Music tracks and artists |
+| `/api/search/suggestions?q=:query` | `GET` | Autocomplete search suggestions |
+| `/api/trending` | `GET` | Fetch top trending tracks (global or country-filtered) |
+| `/api/home` | `GET` | Discover feed sections (New Releases, Moods, etc.) |
+| `/api/stream/:videoId` | `GET` | Audio stream proxy with HTTP 206 range support |
+| `/api/suggestions/:videoId`| `GET` | Dynamic Up Next queue generation |
+| `/api/lyrics/:videoId` | `GET` | Time-synced or static song lyrics |
+| `/api/import/playlist` | `POST` | Import Spotify / YouTube Music playlists |
+
+---
+
+## 🐳 Docker Deployment
+
+To build and run the backend via Docker:
+
+```bash
+docker-compose up -d --build
+```
+
+---
 
 ## 📄 License
-MIT License. Created for educational and personal use.
+
+This project is licensed under the [MIT License](LICENSE). Built for educational and personal music streaming purposes.

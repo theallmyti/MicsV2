@@ -76,8 +76,6 @@ export const getSimilarTo = (
     historyMap.set(event.trackId, Math.max(prev, event.startedAt));
   });
 
-  const seedArtist = seedTrack.artistId || seedTrack.artist;
-
   const results: RecommendationResult[] = catalog
     .filter(track => track.id !== seedTrack.id)
     .map(track => {
@@ -98,7 +96,7 @@ export const getSimilarTo = (
       return {
         track,
         score: Math.max(0, Math.min(1.0, score)),
-        reason: (isSameArtist ? "same_artist" : "similar_to_liked") as const
+        reason: (isSameArtist ? "same_artist" : "similar_to_liked") as any
       };
     });
 
