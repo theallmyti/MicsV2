@@ -1142,11 +1142,11 @@ app.get('/api/upnext/:videoId', async (req: any, res: any) => {
 
 // ===== SPA fallback for client routing in production =====
 if (hasDist) {
-  app.get('*', (req: any, res: any, next: any) => {
-    if (req.path.startsWith('/api/') || req.path === '/api') {
-      return next();
+  app.use((req: any, res: any, next: any) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+      return res.sendFile(path.join(distPath, 'index.html'));
     }
-    res.sendFile(path.join(distPath, 'index.html'));
+    next();
   });
 }
 
