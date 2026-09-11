@@ -11,48 +11,49 @@
 .backdrop {
   position: absolute;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .modalCard {
   position: relative;
   width: 100%;
   max-width: 500px;
-  background: rgba(30, 30, 30, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  background: var(--surface);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
   z-index: 301;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  border-b: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .header h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .closeButton {
   background: none;
   border: none;
-  color: #aaaaaa;
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 0.25rem;
+  padding: 0.35rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,8 +62,8 @@
 }
 
 .closeButton:hover:not(:disabled) {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  background-color: var(--surface-container-high);
 }
 
 .closeButton:disabled {
@@ -71,7 +72,7 @@
 }
 
 .content {
-  padding: 1.5rem;
+  padding: 1.5rem 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -85,8 +86,8 @@
 
 .inputGroup label {
   font-size: 0.875rem;
-  color: #aaaaaa;
-  font-weight: 500;
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 .inputWrapper {
@@ -98,31 +99,31 @@
 .inputIcon {
   position: absolute;
   left: 1rem;
-  color: #aaaaaa;
+  color: var(--text-tertiary);
   font-size: 1.25rem;
   pointer-events: none;
 }
 
 .textInput {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  background: var(--surface-container);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
   padding: 0.75rem 1rem 0.75rem 2.75rem;
-  font-size: 1rem;
-  color: #ffffff;
+  font-size: 0.95rem;
+  color: var(--text-primary);
   outline: none;
   transition: all 0.2s ease;
 }
 
 .textInput:focus {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+  background: var(--surface-container-high);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15);
 }
 
 .textInput::placeholder {
-  color: #717171;
+  color: var(--text-tertiary);
 }
 
 .validationInfo {
@@ -143,35 +144,36 @@
 }
 
 .validBadge.spotify {
-  background-color: rgba(30, 215, 96, 0.1);
-  color: #1ed760;
+  background-color: rgba(30, 215, 96, 0.12);
+  color: #10b981;
 }
 
 .validBadge.youtube {
-  background-color: rgba(255, 0, 0, 0.1);
-  color: #ff0000;
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
 }
 
 .invalidError {
   font-size: 0.8125rem;
-  color: #ff4d4d;
+  color: #ef4444;
+  font-weight: 500;
 }
 
 .supportedPlatforms {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
+  background: var(--surface-container-low);
+  border-radius: 14px;
   padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
 }
 
 .supportedPlatforms p {
   margin: 0;
-  font-size: 0.8125rem;
-  color: #717171;
-  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -181,22 +183,22 @@
   align-items: center;
   gap: 0.625rem;
   font-size: 0.875rem;
-  color: #aaaaaa;
+  color: var(--text-secondary);
 }
 
 .platformDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #3f3f3f;
+  background-color: var(--text-tertiary);
 }
 
 .platformDot.spotify {
-  background-color: #1ed760;
+  background-color: #10b981;
 }
 
 .platformDot.youtube {
-  background-color: #ff0000;
+  background-color: #ef4444;
 }
 
 /* State 2: Loading */
@@ -213,9 +215,9 @@
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid var(--border-subtle);
   border-radius: 50%;
-  border-top-color: #ffffff;
+  border-top-color: var(--primary);
   animation: spin 1s linear infinite;
 }
 
@@ -223,19 +225,19 @@
   margin: 0 0 0.25rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .loadingText p {
   margin: 0;
   font-size: 0.8125rem;
-  color: #aaaaaa;
+  color: var(--text-secondary);
 }
 
 .progressBarContainer {
   width: 100%;
   height: 4px;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--surface-container-highest);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -246,7 +248,7 @@
   top: 0;
   bottom: 0;
   left: 0;
-  background: linear-gradient(90deg, #1ed760, #ffffff, #ff0000);
+  background: linear-gradient(90deg, #10b981, var(--primary), #ef4444);
   width: 100%;
   animation: shimmer 1.5s infinite linear;
   transform-origin: 0% 50%;
@@ -263,19 +265,19 @@
   display: flex;
   gap: 1rem;
   align-items: center;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-container-low);
   padding: 1rem;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
 }
 
 .artwork {
-  width: 80px;
-  height: 80px;
+  width: 76px;
+  height: 76px;
   border-radius: 12px;
   object-fit: cover;
-  background-color: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: var(--surface-container-highest);
+  border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -292,7 +294,7 @@
 .playlistTitle {
   font-size: 1rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
   margin: 0;
   line-clamp: 1;
   -webkit-line-clamp: 1;
@@ -303,7 +305,7 @@
 
 .playlistOwner {
   font-size: 0.8125rem;
-  color: #aaaaaa;
+  color: var(--text-secondary);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -314,7 +316,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-h: 180px;
+  max-height: 180px;
   overflow-y: auto;
   padding-right: 0.25rem;
 }
@@ -324,12 +326,13 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background-color: rgba(255, 255, 255, 0.02);
-  border-radius: 8px;
+  background-color: var(--surface-container);
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
 }
 
 .trackCheck {
-  color: #aaaaaa;
+  color: var(--primary);
   font-size: 1.125rem;
   font-weight: bold;
 }
@@ -341,7 +344,7 @@
 .trackTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-primary);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -350,7 +353,7 @@
 
 .trackArtist {
   font-size: 0.75rem;
-  color: #aaaaaa;
+  color: var(--text-secondary);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -359,15 +362,15 @@
 
 .moreTracksCount {
   font-size: 0.8125rem;
-  color: #717171;
+  color: var(--text-tertiary);
   text-align: center;
   padding: 0.25rem 0;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .warningBanner {
-  background-color: rgba(255, 179, 0, 0.05);
-  border: 1px solid rgba(255, 179, 0, 0.15);
+  background-color: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
   border-radius: 12px;
   padding: 0.75rem 1rem;
   display: flex;
@@ -376,13 +379,13 @@
 }
 
 .warningIcon {
-  color: #ffb300;
+  color: #f59e0b;
   font-size: 1.25rem;
 }
 
 .warningText {
   font-size: 0.8125rem;
-  color: #aaaaaa;
+  color: var(--text-secondary);
   line-height: 1.4;
   margin: 0;
 }
@@ -400,28 +403,28 @@
 
 .errorIcon {
   font-size: 2.25rem;
-  color: #ff4d4d;
+  color: #ef4444;
 }
 
 .errorText h4 {
   margin: 0 0 0.5rem 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .errorText p {
   margin: 0;
   font-size: 0.875rem;
-  color: #aaaaaa;
+  color: var(--text-secondary);
   max-width: 280px;
   line-height: 1.4;
 }
 
 /* Footer Actions */
 .footer {
-  padding: 1.25rem 1.5rem;
-  border-t: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1.25rem 1.75rem;
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
@@ -430,41 +433,44 @@
 .cancelBtn {
   background: none;
   border: none;
-  color: #ffffff;
+  color: var(--text-secondary);
   padding: 0.625rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 600;
   border-radius: 9999px;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .cancelBtn:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  background-color: var(--surface-container-high);
 }
 
 .cancelBtn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .primaryBtn {
-  background-color: #ffffff;
+  background-color: var(--primary);
   border: none;
-  color: #0f0f0f;
+  color: #ffffff;
   padding: 0.625rem 1.5rem;
   font-size: 0.875rem;
   font-weight: 700;
   border-radius: 9999px;
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.25);
 }
 
 .primaryBtn:hover:not(:disabled) {
-  opacity: 0.9;
+  opacity: 0.95;
+  box-shadow: 0 6px 20px rgba(244, 63, 94, 0.4);
 }
 
 .primaryBtn:active:not(:disabled) {
@@ -474,6 +480,7 @@
 .primaryBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 @keyframes spin {

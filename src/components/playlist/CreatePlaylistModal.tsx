@@ -76,17 +76,17 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-          className="relative bg-surface-container/90 backdrop-blur-xl border border-white/10 rounded-[24px] w-full max-w-[600px] shadow-2xl flex flex-col overflow-hidden"
+          className="relative bg-surface-container/95 backdrop-blur-2xl border border-border-subtle rounded-[24px] w-full max-w-[600px] shadow-2xl flex flex-col overflow-hidden"
         >
           {/* Header */}
-          <div className="flex justify-between items-center px-8 py-6 border-b border-white/5">
-            <h3 className="text-[20px] font-bold text-white">
+          <div className="flex justify-between items-center px-8 py-6 border-b border-border-subtle">
+            <h3 className="text-[20px] font-bold text-text-primary">
               {mode === null && 'New playlist'}
               {mode === 'blank' && 'Create playlist'}
             </h3>
             <button
               onClick={handleClose}
-              className="text-text-secondary hover:text-white p-1 rounded-full hover:bg-white/5 transition-colors"
+              className="text-text-secondary hover:text-text-primary p-1 rounded-full hover:bg-surface-container-high transition-colors"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -98,21 +98,21 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
               {/* Option 1: Create Blank */}
               <button
                 onClick={() => setMode('blank')}
-                className="w-[calc(50%-8px)] h-[88px] bg-[#1a1a1a] border border-white/12 hover:border-white/30 rounded-xl flex flex-col items-center justify-center gap-1 group active:bg-white/5 transition-all outline-none"
+                className="w-[calc(50%-8px)] h-[88px] bg-surface-container-high border border-border-subtle hover:border-primary/40 rounded-2xl flex flex-col items-center justify-center gap-1 group active:scale-95 transition-all outline-none shadow-sm"
               >
-                <span className="material-symbols-outlined text-2xl text-[#aaaaaa] group-hover:text-white transition-colors">edit</span>
-                <span className="text-[13px] text-white font-medium">Create blank</span>
-                <span className="text-[11px] text-[#717171]">Start fresh</span>
+                <span className="material-symbols-outlined text-2xl text-text-tertiary group-hover:text-primary transition-colors">edit</span>
+                <span className="text-[13px] text-text-primary font-medium">Create blank</span>
+                <span className="text-[11px] text-text-tertiary">Start fresh</span>
               </button>
 
               {/* Option 2: Import from Link */}
               <button
                 onClick={handleSelectImport}
-                className="w-[calc(50%-8px)] h-[88px] bg-[#1a1a1a] border border-white/12 hover:border-white/30 rounded-xl flex flex-col items-center justify-center gap-1 group active:bg-white/5 transition-all outline-none"
+                className="w-[calc(50%-8px)] h-[88px] bg-surface-container-high border border-border-subtle hover:border-primary/40 rounded-2xl flex flex-col items-center justify-center gap-1 group active:scale-95 transition-all outline-none shadow-sm"
               >
-                <span className="material-symbols-outlined text-2xl text-[#aaaaaa] group-hover:text-white transition-colors">link</span>
-                <span className="text-[13px] text-white font-medium">Import from link</span>
-                <span className="text-[11px] text-[#717171]">Spotify or YT Music</span>
+                <span className="material-symbols-outlined text-2xl text-text-tertiary group-hover:text-primary transition-colors">link</span>
+                <span className="text-[13px] text-text-primary font-medium">Import from link</span>
+                <span className="text-[11px] text-text-tertiary">Spotify or YT Music</span>
               </button>
             </div>
           )}
@@ -123,7 +123,7 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
               {/* Top section: cover + name/desc */}
               <div className="p-8 pb-4 flex gap-8">
                 {/* Cover placeholder */}
-                <div className="w-[140px] h-[140px] rounded-xl bg-gradient-to-br from-surface-container-highest to-surface-variant flex-shrink-0 relative group overflow-hidden cursor-pointer">
+                <div className="w-[140px] h-[140px] rounded-xl bg-surface-container-highest flex-shrink-0 relative group overflow-hidden cursor-pointer shadow-md">
                   {playlistAddedSongs[0] ? (
                     <img src={playlistAddedSongs[0].thumbnail} alt="cover" className="w-full h-full object-cover" />
                   ) : (
@@ -152,7 +152,7 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
                     onChange={e => setNewPlaylistDesc(e.target.value)}
                     placeholder="Describe your vibe..."
                     rows={2}
-                    className="bg-white/5 border border-white/10 rounded-xl p-3 text-body-md text-text-primary placeholder-text-secondary focus:bg-white/10 focus:border-white/20 focus:ring-0 transition-all resize-none outline-none"
+                    className="bg-surface-container border border-border-subtle rounded-xl p-3 text-body-md text-text-primary placeholder-text-secondary focus:border-primary focus:ring-0 transition-all resize-none outline-none"
                   />
                 </div>
               </div>
@@ -166,7 +166,7 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
                     value={playlistSongSearch}
                     onChange={e => setPlaylistSongSearch(e.target.value)}
                     placeholder="Add songs"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-12 pr-4 text-body-md text-text-primary placeholder-text-secondary focus:bg-white/10 focus:ring-0 transition-all outline-none"
+                    className="w-full bg-surface-container border border-border-subtle rounded-xl py-2 pl-12 pr-4 text-body-md text-text-primary placeholder-text-secondary focus:border-primary focus:ring-0 transition-all outline-none"
                   />
                 </div>
 
@@ -177,7 +177,7 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
                       <h4 className="text-label-md font-bold text-text-tertiary uppercase tracking-wider mb-2">Added</h4>
                       <div className="space-y-1">
                         {playlistAddedSongs.map(track => (
-                          <div key={track.id} className="flex items-center gap-4 p-2 rounded-xl bg-white/5">
+                          <div key={track.id} className="flex items-center gap-4 p-2 rounded-xl bg-surface-container-high border border-border-subtle">
                             <img src={track.thumbnail} alt={track.title} className="w-10 h-10 rounded-lg object-cover" />
                             <div className="flex-1 min-w-0">
                               <p className="text-body-md font-medium text-text-primary truncate">{track.title}</p>
@@ -185,7 +185,7 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
                             </div>
                             <button
                               onClick={() => setPlaylistAddedSongs(prev => prev.filter(t => t.id !== track.id))}
-                              className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+                              className="p-1.5 rounded-full hover:bg-surface-container-highest transition-colors"
                             >
                               <span className="material-symbols-outlined text-text-secondary text-sm">close</span>
                             </button>
@@ -210,7 +210,7 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
                         })
                         .slice(0, 5)
                         .map(track => (
-                          <div key={track.id} className="flex items-center gap-4 p-2 rounded-xl hover:bg-white/5 transition-all group">
+                          <div key={track.id} className="flex items-center gap-4 p-2 rounded-xl hover:bg-surface-container-high transition-all group border border-transparent hover:border-border-subtle">
                             <img src={track.thumbnail} alt={track.title} className="w-10 h-10 rounded-lg object-cover" />
                             <div className="flex-1 min-w-0">
                               <p className="text-body-md font-medium text-text-primary truncate">{track.title}</p>
@@ -218,7 +218,7 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
                             </div>
                             <button
                               onClick={() => setPlaylistAddedSongs(prev => [...prev, track])}
-                              className="px-4 py-1.5 rounded-full border border-white/10 hover:border-white/30 text-label-md transition-all text-text-primary whitespace-nowrap"
+                              className="px-4 py-1.5 rounded-full border border-border-subtle hover:border-primary/40 text-label-md transition-all text-text-primary whitespace-nowrap hover:text-primary"
                             >
                               Add
                             </button>
@@ -234,16 +234,16 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
               </div>
 
               {/* Footer actions */}
-              <div className="p-6 border-t border-white/5 flex justify-end gap-4">
+              <div className="p-6 border-t border-border-subtle flex justify-end gap-4">
                 <button
                   onClick={() => setMode(null)}
-                  className="px-6 py-2.5 rounded-full text-label-lg font-medium text-text-primary hover:bg-white/5 transition-colors"
+                  className="px-6 py-2.5 rounded-full text-label-lg font-medium text-text-secondary hover:text-text-primary hover:bg-surface-container-high transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={onConfirm}
-                  className="px-8 py-2.5 rounded-full bg-white text-black text-label-lg font-bold hover:opacity-90 transition-all active:scale-95 duration-150"
+                  className="px-8 py-2.5 rounded-full bg-primary text-white text-label-lg font-bold hover:bg-primary/90 transition-all active:scale-95 duration-150 shadow-md shadow-primary/25"
                 >
                   Create Playlist
                 </button>

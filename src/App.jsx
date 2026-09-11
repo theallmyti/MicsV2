@@ -179,6 +179,40 @@ const clearSearchHistory = () => {
 
 
 function YourApp({ initialPlayerState }) {
+  // Theme state ('dark' | 'light')
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('mics_theme') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    try {
+      localStorage.setItem('mics_theme', nextTheme);
+    } catch {}
+    if (nextTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
+  };
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
+  }, [theme]);
+
   // Navigation & Tab state
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'explore' | 'library' | 'profile'
   // Profile — stored locally in browser
@@ -694,7 +728,7 @@ function YourApp({ initialPlayerState }) {
     return (
       <span className="font-normal text-text-secondary">
         {before}
-        <strong className="font-bold text-white">{match}</strong>
+        <strong className="font-bold text-primary">{match}</strong>
         {after}
       </span>
     );
@@ -717,7 +751,7 @@ function YourApp({ initialPlayerState }) {
                 setHighlightedIndex(-1);
               }}
               aria-label="Clear all search history"
-              className="text-[12px] text-text-secondary hover:text-white hover:underline lowercase font-normal normal-case"
+              className="text-[12px] text-text-secondary hover:text-text-primary hover:underline lowercase font-normal normal-case transition-colors"
             >
               Clear all
             </button>
@@ -732,7 +766,7 @@ function YourApp({ initialPlayerState }) {
                 onMouseEnter={() => setHighlightedIndex(idx)}
                 onClick={() => triggerSearch(item.query)}
                 className={`h-12 px-4 flex items-center gap-3 cursor-pointer transition-colors duration-150 ${
-                  isHighlighted ? 'bg-white/10' : 'hover:bg-white/5'
+                  isHighlighted ? 'bg-surface-container-high' : 'hover:bg-surface-container'
                 }`}
               >
                 <span className={`material-symbols-outlined text-[18px] text-text-tertiary select-none`}>
@@ -750,7 +784,7 @@ function YourApp({ initialPlayerState }) {
                     setHighlightedIndex(-1);
                   }}
                   aria-label={`Remove ${item.query} from search history`}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-text-tertiary hover:bg-white/10 hover:text-white transition-colors"
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-text-tertiary hover:bg-surface-container-highest hover:text-text-primary transition-colors"
                 >
                   <span className="material-symbols-outlined text-[17px]">delete</span>
                 </button>
@@ -765,55 +799,52 @@ function YourApp({ initialPlayerState }) {
   const renderSkeletonState = () => {
     const widths = ['w-3/5', 'w-3/4', 'w-[65%]'];
     return (
-      <div className="flex flex-col gap-2 py-2">
+      <div className="py-2 px-4 flex flex-col gap-2 animate-pulse">
         {widths.map((w, idx) => (
-          <div key={`skel-${idx}`} className="h-12 px-4 flex items-center gap-3">
-            <div className="w-[18px] h-[18px] rounded-full shrink-0 animate-shimmer" />
-            <div className={`h-3.5 rounded ${w} animate-shimmer`} />
+          <div key={idx} className="h-10 flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full bg-surface-container-highest" />
+            <div className={`h-4 rounded bg-surface-container-highest ${w}`} />
           </div>
         ))}
       </div>
     );
   };
 
-  const renderSuggestionsState = () => {
-    let globalItemIdx = 0;
-    
+  const renderSuggestionsList = () => {
     return (
-      <div className="flex flex-col">
-        {suggestions.map((group, groupIdx) => {
-          const isLastGroup = groupIdx === suggestions.length - 1;
-          
+      <div>
+        {groupedSuggestions.map((group, groupIdx) => {
+          const isLastGroup = groupIdx === groupedSuggestions.length - 1;
           return (
-            <div key={`group-${group.title}`}>
+            <div key={`group-${groupIdx}`}>
               {group.items.map((item) => {
-                const currentIdx = globalItemIdx;
-                globalItemIdx++;
-                const isHighlighted = currentIdx === highlightedIndex;
-                
+                const itemIndex = flatSuggestions.findIndex((s) => s === item);
+                const isHighlighted = itemIndex === highlightedIndex;
+
                 return (
                   <div
-                    key={`sugg-item-${currentIdx}`}
+                    key={`${item.type}-${item.id || item.text || item.name || item.title}-${itemIndex}`}
                     role="option"
                     aria-selected={isHighlighted}
-                    onMouseEnter={() => setHighlightedIndex(currentIdx)}
+                    onMouseEnter={() => setHighlightedIndex(itemIndex)}
                     onClick={() => {
                       if (item.type === 'completion') {
                         triggerSearch(item.text);
                       } else if (item.type === 'artist') {
-                        triggerSearch(item.name);
+                        setSearchFocused(false);
+                        handleOpenArtist(item.name);
                       } else if (item.type === 'song') {
                         setSearchFocused(false);
                         handlePlayTrack(item, 'search_result');
                       }
                     }}
                     className={`h-12 px-4 flex items-center gap-3 cursor-pointer transition-colors duration-150 ${
-                      isHighlighted ? 'bg-white/10' : 'hover:bg-white/5'
+                      isHighlighted ? 'bg-surface-container-high' : 'hover:bg-surface-container'
                     }`}
                   >
                     {item.type === 'completion' && (
                       <span className={`material-symbols-outlined text-[18px] select-none ${
-                        isHighlighted ? 'text-white' : 'text-text-secondary'
+                        isHighlighted ? 'text-primary' : 'text-text-secondary'
                       }`}>
                         search
                       </span>
@@ -848,7 +879,7 @@ function YourApp({ initialPlayerState }) {
                           searchInputRef.current?.focus();
                         }}
                         aria-label={`Fill ${item.text} into search bar`}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-text-tertiary hover:bg-white/10 hover:text-white transition-colors"
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-text-tertiary hover:bg-surface-container-highest hover:text-text-primary transition-colors"
                       >
                         <span className="material-symbols-outlined text-[15px]">north_west</span>
                       </button>
@@ -868,7 +899,7 @@ function YourApp({ initialPlayerState }) {
               })}
               
               {!isLastGroup && (
-                <div className="border-b border-white/5 my-1" />
+                <div className="border-b border-border-subtle my-1" />
               )}
             </div>
           );
@@ -887,21 +918,21 @@ function YourApp({ initialPlayerState }) {
           onMouseEnter={() => setHighlightedIndex(0)}
           onClick={() => triggerSearch(searchQuery)}
           className={`h-12 px-4 flex items-center gap-3 cursor-pointer transition-colors duration-150 ${
-            isHighlighted ? 'bg-white/10' : 'hover:bg-white/5'
+            isHighlighted ? 'bg-surface-container-high' : 'hover:bg-surface-container'
           }`}
         >
           <span className={`material-symbols-outlined text-[18px] select-none ${
-            isHighlighted ? 'text-white' : 'text-text-secondary'
+            isHighlighted ? 'text-primary' : 'text-text-secondary'
           }`}>
             search
           </span>
           <span className="text-[14px] text-text-secondary truncate font-normal">
-            Search for <strong className="font-bold text-white">"{searchQuery}"</strong>
+            Search for <strong className="font-bold text-text-primary">"{searchQuery}"</strong>
           </span>
         </div>
 
         <div className="flex flex-col items-center justify-center py-8">
-          <span className="material-symbols-outlined text-[28px] text-[#3f3f3f] select-none">
+          <span className="material-symbols-outlined text-[28px] text-text-tertiary select-none">
             search_off
           </span>
           <span className="text-[14px] text-text-secondary text-center mt-2 px-4">
@@ -2007,19 +2038,23 @@ function YourApp({ initialPlayerState }) {
       )}
 
       {/* Top Navigation */}
-      <header className="bg-bg-nav flex justify-between items-center px-4 md:px-gutter w-full shrink-0 z-50 h-nav-height">
+      <header className="bg-bg-nav/85 backdrop-blur-xl border-b border-border-subtle flex justify-between items-center px-4 md:px-gutter w-full shrink-0 z-50 h-nav-height transition-colors duration-200">
         <div className="flex items-center gap-4">
           {isPlayerExpanded ? (
-            <span 
+            <button 
               onClick={() => setIsPlayerExpanded(false)}
-              className="material-symbols-outlined text-text-primary cursor-pointer icon-btn icon-btn-sm hover:bg-surface-container-highest"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-text-primary hover:bg-surface-container transition-colors"
+              title="Back"
             >
-              arrow_back
-            </span>
+              <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+            </button>
           ) : (
-            <span className="material-symbols-outlined text-text-primary cursor-pointer icon-btn icon-btn-sm hover:bg-surface-container-highest">
-              menu
-            </span>
+            <button 
+              className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-text-primary hover:bg-surface-container transition-colors"
+              title="Menu"
+            >
+              <span className="material-symbols-outlined text-[22px]">menu</span>
+            </button>
           )}
           <div 
             onClick={() => {
@@ -2031,15 +2066,12 @@ function YourApp({ initialPlayerState }) {
               setActiveTab('home');
               setIsPlayerExpanded(false);
             }}
-            className="text-headline-md font-headline-md font-black text-text-primary flex items-center gap-1 cursor-pointer active:scale-95 transition-transform duration-150"
+            className="font-heading text-xl font-extrabold text-text-primary flex items-center gap-2.5 cursor-pointer active:scale-95 transition-all duration-150 group select-none"
           >
-            <span 
-              className="material-symbols-outlined text-primary" 
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              play_circle
-            </span>
-            Mics
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary to-rose-400 flex items-center justify-center text-white shadow-md shadow-primary/25 group-hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>graphic_eq</span>
+            </div>
+            <span className="tracking-tight text-lg font-bold">Mics</span>
           </div>
         </div>
         
@@ -2048,11 +2080,11 @@ function YourApp({ initialPlayerState }) {
             ref={searchWrapperRef}
             className={`relative w-full flex items-center transition-all duration-200 border rounded-full ${
               searchFocused 
-                ? 'border-[rgba(255,255,255,0.35)] bg-[#121212] shadow-[0_0_0_3px_rgba(255,255,255,0.06)]' 
-                : 'border-[rgba(255,255,255,0.1)] bg-[#121212]'
+                ? 'border-primary/70 bg-surface shadow-[0_0_0_3px_rgba(244,63,94,0.12)]' 
+                : 'border-border-subtle bg-surface-container hover:border-border-highlight'
             }`}
           >
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary select-none">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary select-none text-[20px]">
               search
             </span>
             <input 
@@ -2061,8 +2093,8 @@ function YourApp({ initialPlayerState }) {
               aria-expanded={searchFocused}
               aria-autocomplete="list"
               aria-controls="search-dropdown"
-              className="w-full bg-transparent border-none py-2 pl-12 pr-10 text-body-lg focus:ring-0 outline-none text-text-primary placeholder-text-secondary font-normal" 
-              placeholder="Search songs, albums, artists, podcasts" 
+              className="w-full bg-transparent border-none py-2.5 pl-11 pr-10 text-body-md focus:ring-0 outline-none text-text-primary placeholder-text-tertiary font-normal" 
+              placeholder="Search songs, albums, artists, podcasts..." 
               type="text"
               value={searchQuery}
               onChange={(e) => {
@@ -2088,7 +2120,7 @@ function YourApp({ initialPlayerState }) {
                   searchInputRef.current?.focus();
                 }}
                 aria-label="Clear search text"
-                className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-[#aaaaaa] hover:text-white transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -2108,7 +2140,7 @@ function YourApp({ initialPlayerState }) {
                     duration: (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ? 0 : (searchFocused ? 0.18 : 0.12), 
                     ease: "easeOut" 
                   }}
-                  className="absolute left-0 right-0 top-full mt-1 max-h-[480px] overflow-y-auto bg-[#1a1a1a] border border-[rgba(255,255,255,0.12)] rounded-[12px] shadow-[0_8px_32px_rgba(0,0,0,0.7)] z-[200] py-2 search-scrollbar"
+                  className="absolute left-0 right-0 top-full mt-2 max-h-[480px] overflow-y-auto bg-surface/95 backdrop-blur-2xl border border-border-subtle rounded-2xl shadow-2xl z-[200] py-2 search-scrollbar"
                 >
                   {/* Empty Input state */}
                   {!searchQuery.trim() && renderEmptyState()}
@@ -2117,7 +2149,7 @@ function YourApp({ initialPlayerState }) {
                   {searchQuery.trim() && suggestionsLoading && renderSkeletonState()}
 
                   {/* Suggestions State */}
-                  {searchQuery.trim() && !suggestionsLoading && suggestions.length > 0 && renderSuggestionsState()}
+                  {searchQuery.trim() && !suggestionsLoading && suggestions.length > 0 && renderSuggestionsList()}
 
                   {/* No Results State */}
                   {searchQuery.trim() && !suggestionsLoading && suggestions.length === 0 && renderNoResultsState()}
@@ -2128,9 +2160,25 @@ function YourApp({ initialPlayerState }) {
         </div>
         
         <div className="flex items-center gap-2">
-          <button className="material-symbols-outlined text-text-primary icon-btn icon-btn-sm hover:bg-surface-container-highest">
-            settings
+          {/* Theme Toggle Button (Light/Dark Mode) */}
+          <button 
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            className="w-9 h-9 rounded-full flex items-center justify-center border border-border-subtle hover:bg-surface-container transition-all active:scale-95 duration-150 text-text-secondary hover:text-text-primary"
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+            </span>
           </button>
+
+          <button 
+            className="w-9 h-9 rounded-full flex items-center justify-center border border-border-subtle hover:bg-surface-container transition-all active:scale-95 duration-150 text-text-secondary hover:text-text-primary"
+            title="Settings"
+          >
+            <span className="material-symbols-outlined text-[20px]">settings</span>
+          </button>
+
           <div 
             onClick={() => {
               setActiveTab('profile');
@@ -2139,7 +2187,8 @@ function YourApp({ initialPlayerState }) {
               setIsSearching(false);
               setIsPlayerExpanded(false);
             }}
-            className="w-8 h-8 rounded-full ml-2 cursor-pointer border border-outline-variant active:scale-95 transition-transform duration-150 flex items-center justify-center bg-surface-container-high"
+            className="w-9 h-9 rounded-full ml-1 cursor-pointer border border-border-subtle active:scale-95 transition-transform duration-150 flex items-center justify-center bg-surface-container hover:border-primary/50"
+            title="Profile"
           >
             <span className="material-symbols-outlined text-[20px] text-text-primary">person</span>
           </div>
@@ -2150,7 +2199,7 @@ function YourApp({ initialPlayerState }) {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar Navigation */}
         {!isPlayerExpanded && (
-          <aside className="hidden md:flex flex-col gap-stack-sm h-full w-sidebar-width bg-bg-nav pt-4 overflow-y-auto shrink-0 border-r border-outline-variant/10">
+          <aside className="hidden md:flex flex-col gap-stack-sm h-full w-sidebar-width bg-bg-nav/75 backdrop-blur-xl pt-4 overflow-y-auto shrink-0 border-r border-border-subtle transition-colors duration-200">
           <nav className="flex flex-col px-3 gap-1 relative">
             <button 
               onClick={() => {
@@ -2162,16 +2211,16 @@ function YourApp({ initialPlayerState }) {
                 setActiveAlbum(null);
                 setIsPlayerExpanded(false);
               }}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors w-full relative ${
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all w-full relative outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                 activeTab === 'home' && !isSearching && !activeArtist && !activeAlbum
-                  ? 'text-text-primary font-bold'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'text-primary font-bold'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-container/60'
               }`}
             >
               {activeTab === 'home' && !isSearching && !activeArtist && !activeAlbum && (
                 <motion.div 
                   layoutId="sidebar-active-indicator" 
-                  className="absolute inset-0 bg-surface-container-highest rounded-xl -z-10"
+                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-xl -z-10"
                   {...sidebarItemActiveIndicatorVariants}
                 />
               )}
@@ -2189,16 +2238,16 @@ function YourApp({ initialPlayerState }) {
                 setActiveAlbum(null);
                 setIsPlayerExpanded(false);
               }}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors w-full relative ${
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all w-full relative outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                 activeTab === 'explore' && !isSearching && !activeArtist && !activeAlbum
-                  ? 'text-text-primary font-bold'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'text-primary font-bold'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-container/60'
               }`}
             >
               {activeTab === 'explore' && !isSearching && !activeArtist && !activeAlbum && (
                 <motion.div 
                   layoutId="sidebar-active-indicator" 
-                  className="absolute inset-0 bg-surface-container-highest rounded-xl -z-10"
+                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-xl -z-10"
                   {...sidebarItemActiveIndicatorVariants}
                 />
               )}
@@ -2216,16 +2265,16 @@ function YourApp({ initialPlayerState }) {
                 setActiveAlbum(null);
                 setIsPlayerExpanded(false);
               }}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors w-full relative ${
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all w-full relative outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                 activeTab === 'library' && !isSearching && !activeArtist && !activeAlbum
-                  ? 'text-text-primary font-bold'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'text-primary font-bold'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-container/60'
               }`}
             >
               {activeTab === 'library' && !isSearching && !activeArtist && !activeAlbum && (
                 <motion.div 
                   layoutId="sidebar-active-indicator" 
-                  className="absolute inset-0 bg-surface-container-highest rounded-xl -z-10"
+                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-xl -z-10"
                   {...sidebarItemActiveIndicatorVariants}
                 />
               )}
@@ -2243,16 +2292,16 @@ function YourApp({ initialPlayerState }) {
                 setActiveAlbum(null);
                 setIsPlayerExpanded(false);
               }}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors w-full relative ${
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all w-full relative outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                 activeTab === 'profile' && !isSearching && !activeArtist && !activeAlbum
-                  ? 'text-text-primary font-bold'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'text-primary font-bold'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-container/60'
               }`}
             >
               {activeTab === 'profile' && !isSearching && !activeArtist && !activeAlbum && (
                 <motion.div 
                   layoutId="sidebar-active-indicator" 
-                  className="absolute inset-0 bg-surface-container-highest rounded-xl -z-10"
+                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-xl -z-10"
                   {...sidebarItemActiveIndicatorVariants}
                 />
               )}
@@ -2358,6 +2407,10 @@ function YourApp({ initialPlayerState }) {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" 
                         src={currentTrack ? currentTrack.thumbnail : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80'}
                         alt={currentTrack ? currentTrack.title : 'Album artwork'}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80';
+                        }}
                       />
                     </div>
                   </motion.div>
@@ -2370,6 +2423,10 @@ function YourApp({ initialPlayerState }) {
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" 
                       src={currentTrack ? currentTrack.thumbnail : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80'}
                       alt={currentTrack ? currentTrack.title : 'Album artwork'}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80';
+                      }}
                     />
                   </motion.div>
                 )}
@@ -2396,9 +2453,9 @@ function YourApp({ initialPlayerState }) {
                               handleToggleLike(currentTrack);
                             }
                           }}
-                          className="p-2 hover:bg-surface-container-highest rounded-full active:scale-95 flex items-center justify-center"
+                          className="p-2 hover:bg-surface-container-highest rounded-full active:scale-95 flex items-center justify-center transition-colors"
                           style={{
-                            color: isCurrentTrackLiked ? "#ff5540" : "#ffffff"
+                            color: isCurrentTrackLiked ? "#f43f5e" : "var(--text-primary)"
                           }}
                         >
                           <span className="material-symbols-outlined" style={{ fontVariationSettings: isCurrentTrackLiked ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
@@ -2413,7 +2470,7 @@ function YourApp({ initialPlayerState }) {
                                   variants={likeParticleVariants(angle)}
                                   initial="initial"
                                   animate="burst"
-                                  className="absolute w-1.5 h-1.5 rounded-full bg-[#ff5540]"
+                                  className="absolute w-1.5 h-1.5 rounded-full bg-primary"
                                 />
                               );
                             })}
@@ -2432,7 +2489,7 @@ function YourApp({ initialPlayerState }) {
                   {frequencies.map((freq, idx) => (
                     <div
                       key={idx}
-                      className="flex-1 bg-gradient-to-t from-[#ff5540]/20 to-[#ff5540] rounded-t-sm"
+                      className="flex-1 bg-gradient-to-t from-primary/20 to-primary rounded-t-sm"
                       style={{
                         height: `${freq * 100}%`,
                         minHeight: '4px',
@@ -2446,14 +2503,14 @@ function YourApp({ initialPlayerState }) {
                 <div className="w-full mb-8">
                   <div 
                     onClick={handleProgressBarClick}
-                    className="relative h-1 w-full bg-white/10 rounded-full cursor-pointer group"
+                    className="relative h-1.5 w-full bg-surface-container-highest rounded-full cursor-pointer group"
                   >
                     <div 
-                      className="absolute top-0 left-0 h-full bg-primary-container rounded-full"
+                      className="absolute top-0 left-0 h-full bg-primary rounded-full"
                       style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
                     ></div>
                     <div 
-                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-primary-container rounded-full scale-0 group-hover:scale-100 transition-transform"
+                      className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-primary rounded-full shadow-md scale-0 group-hover:scale-100 transition-transform"
                       style={{ left: `${duration ? (currentTime / duration) * 100 : 0}%`, transform: 'translate(-50%, -50%)' }}
                     ></div>
                   </div>
@@ -2468,39 +2525,39 @@ function YourApp({ initialPlayerState }) {
                   <button 
                     onClick={handleToggleShuffle}
                     className={`transition-colors active:scale-95 duration-150 ${
-                      isShuffle ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                      isShuffle ? 'text-primary font-bold' : 'text-text-tertiary hover:text-text-primary'
                     }`}
                   >
                     <span className="material-symbols-outlined">shuffle</span>
                   </button>
                   <button 
                     onClick={handlePrevTrack}
-                    className="text-text-primary hover:scale-110 transition-transform active:scale-95 duration-150"
+                    className="text-text-primary hover:text-primary hover:scale-110 transition-transform active:scale-95 duration-150"
                   >
                     <span className="material-symbols-outlined">skip_previous</span>
                   </button>
                   <button 
                     onClick={handlePlayPauseClick}
                     disabled={isBuffering}
-                    className="bg-white text-black w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 transition-transform active:scale-95 duration-150"
+                    className="bg-primary text-white w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 transition-transform active:scale-95 duration-150 shadow-xl shadow-primary/30 hover:shadow-primary/50"
                   >
                     <span
                       className={`material-symbols-outlined select-none ${isBuffering ? 'animate-spin' : ''}`}
-                      style={{ fontSize: 32, color: '#000', fontVariationSettings: "'FILL' 1" }}
+                      style={{ fontSize: 32, color: '#ffffff', fontVariationSettings: "'FILL' 1" }}
                     >
                       {isBuffering ? 'autorenew' : isPlaying ? 'pause' : 'play_arrow'}
                     </span>
                   </button>
                   <button 
                     onClick={handleNextTrack}
-                    className="text-text-primary hover:scale-110 transition-transform active:scale-95 duration-150"
+                    className="text-text-primary hover:text-primary hover:scale-110 transition-transform active:scale-95 duration-150"
                   >
                     <span className="material-symbols-outlined">skip_next</span>
                   </button>
                   <button 
                     onClick={handleToggleRepeat}
                     className={`transition-colors active:scale-95 duration-150 ${
-                      repeatMode !== 'off' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                      repeatMode !== 'off' ? 'text-primary font-bold' : 'text-text-tertiary hover:text-text-primary'
                     }`}
                   >
                     <span className="material-symbols-outlined">
@@ -2520,14 +2577,14 @@ function YourApp({ initialPlayerState }) {
               </div>
               
               {/* Right Column: Tabs & Content */}
-              <div className="flex-grow w-full h-[350px] md:h-full flex flex-col bg-surface-container-low/40 backdrop-blur-xl rounded-2xl overflow-hidden border border-white/5">
+              <div className="flex-grow w-full h-[350px] md:h-full flex flex-col bg-surface-container/60 backdrop-blur-2xl rounded-2xl overflow-hidden border border-border-subtle shadow-xl">
                 {/* Tabs Header */}
-                <div className="flex border-b border-white/10 shrink-0">
+                <div className="flex border-b border-border-subtle shrink-0">
                   <button 
                     onClick={() => setActivePlayerTab('up-next')}
                     className={`flex-1 py-4 font-label-lg transition-all ${
                       activePlayerTab === 'up-next' 
-                        ? 'text-text-primary border-b-2 border-primary-container bg-white/5 font-bold' 
+                        ? 'text-primary border-b-2 border-primary bg-primary/5 font-bold' 
                         : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >
@@ -2537,7 +2594,7 @@ function YourApp({ initialPlayerState }) {
                     onClick={() => setActivePlayerTab('lyrics')}
                     className={`flex-1 py-4 font-label-lg transition-all ${
                       activePlayerTab === 'lyrics' 
-                        ? 'text-text-primary border-b-2 border-primary-container bg-white/5 font-bold' 
+                        ? 'text-primary border-b-2 border-primary bg-primary/5 font-bold' 
                         : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >
@@ -2552,7 +2609,7 @@ function YourApp({ initialPlayerState }) {
                     <div className="flex flex-col gap-2">
                       {upNextLoading ? (
                         <div className="flex py-12 justify-center">
-                          <span className="material-symbols-outlined animate-spin text-primary-container">autorenew</span>
+                          <span className="material-symbols-outlined animate-spin text-primary">autorenew</span>
                         </div>
                       ) : !currentTrack && upNextQueue.length === 0 ? (
                         <p className="text-text-secondary text-body-lg">Queue is empty.</p>
@@ -2561,10 +2618,10 @@ function YourApp({ initialPlayerState }) {
                           {currentTrack && (
                             <div className="flex flex-col mb-4">
                               <p className="text-text-tertiary text-[11px] uppercase tracking-wider font-bold mb-2">Now playing</p>
-                              <div className="flex items-center gap-4 p-2 rounded-xl bg-surface-container-highest/40 border border-white/5">
+                              <div className="flex items-center gap-4 p-2.5 rounded-xl bg-surface-container-high border border-border-subtle">
                                 <div 
                                   style={{width:40,height:40,minWidth:40,minHeight:40}}
-                                  className="relative flex-shrink-0 bg-surface-container-high rounded-lg overflow-hidden"
+                                  className="relative flex-shrink-0 bg-surface-container rounded-lg overflow-hidden"
                                 >
                                   <img 
                                     width={40}
@@ -2580,17 +2637,17 @@ function YourApp({ initialPlayerState }) {
                                           key={idx}
                                           variants={variant}
                                           animate={isPlaying ? "animate" : { scaleY: 0.3 }}
-                                          className="w-[3px] h-full bg-primary-container origin-bottom rounded-[1px]"
+                                          className="w-[3px] h-full bg-primary origin-bottom rounded-[1px]"
                                         />
                                       ))}
                                     </div>
                                   </div>
                                 </div>
                                 <div className="flex-1 overflow-hidden">
-                                  <h4 className="font-body-md text-body-md truncate text-primary-container font-bold">{currentTrack.title}</h4>
+                                  <h4 className="font-body-md text-body-md truncate text-primary font-bold">{currentTrack.title}</h4>
                                   <p className="font-label-md text-label-md text-text-secondary truncate">{currentTrack.artist}</p>
                                 </div>
-                                <span className="font-label-md text-label-md text-primary-container">{formatTime(duration || currentTrack.duration || 0)}</span>
+                                <span className="font-label-md text-label-md text-primary font-medium">{formatTime(duration || currentTrack.duration || 0)}</span>
                               </div>
                             </div>
                           )}
@@ -3195,9 +3252,9 @@ function YourApp({ initialPlayerState }) {
                       className="h-20 rounded-xl flex items-center px-4 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all duration-150 relative overflow-hidden group shadow-lg" 
                       style={{ backgroundColor: mood.bg }}
                     >
-                      <span className="font-headline-md text-headline-md text-text-primary z-10">{mood.title}</span>
+                      <span className="font-headline-md text-headline-md text-white font-bold drop-shadow-sm z-10">{mood.title}</span>
                       <div className="absolute right-[-10%] bottom-[-10%] opacity-20 group-hover:opacity-40 transition-opacity duration-200">
-                        <span className="material-symbols-outlined text-[56px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        <span className="material-symbols-outlined text-[56px] text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
                           {mood.icon}
                         </span>
                       </div>
@@ -3282,7 +3339,7 @@ function YourApp({ initialPlayerState }) {
                   <div className="relative">
                     <button 
                       onClick={() => setShowUploadDropdown(prev => !prev)}
-                      className="bg-text-primary text-bg-base font-label-lg text-label-lg px-6 py-2.5 rounded-full hover:bg-secondary transition-colors flex items-center gap-2 active:scale-95 duration-150"
+                      className="bg-primary text-white font-label-lg text-label-lg px-6 py-2.5 rounded-full hover:opacity-90 transition-all shadow-md shadow-primary/25 flex items-center gap-2 active:scale-95 duration-150 font-bold"
                     >
                       <span className="material-symbols-outlined">add</span>
                       New Playlist
@@ -3295,13 +3352,13 @@ function YourApp({ initialPlayerState }) {
                           className="fixed inset-0 z-10" 
                           onClick={() => setShowUploadDropdown(false)} 
                         />
-                        <div className="absolute right-0 mt-2 w-48 rounded-xl bg-surface-container/95 border border-white/10 p-1.5 shadow-2xl backdrop-blur-md z-20 animate-fade-in flex flex-col gap-0.5">
+                        <div className="absolute right-0 mt-2 w-48 rounded-xl bg-surface/95 border border-border-subtle p-1.5 shadow-2xl backdrop-blur-md z-20 animate-fade-in flex flex-col gap-0.5">
                           <button
                             onClick={() => {
                               handleCreatePlaylist();
                               setShowUploadDropdown(false);
                             }}
-                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-primary hover:bg-white/5 transition-colors flex items-center gap-2"
+                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-primary hover:bg-surface-container-high transition-colors flex items-center gap-2"
                           >
                             <span className="material-symbols-outlined text-[18px]">playlist_add</span>
                             <span>Create Playlist</span>
@@ -3311,7 +3368,7 @@ function YourApp({ initialPlayerState }) {
                               setShowImportModal(true);
                               setShowUploadDropdown(false);
                             }}
-                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-primary hover:bg-white/5 transition-colors flex items-center gap-2"
+                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-primary hover:bg-surface-container-high transition-colors flex items-center gap-2"
                           >
                             <span className="material-symbols-outlined text-[18px]">link</span>
                             <span>Import Link</span>
@@ -3330,10 +3387,10 @@ function YourApp({ initialPlayerState }) {
                       <button
                         key={filter}
                         onClick={() => setLibraryFilter(filter)}
-                        className={`h-8 px-4 rounded-full text-label-md font-label-md transition-colors whitespace-nowrap active:scale-95 duration-150 ${
+                        className={`h-8 px-4 rounded-full text-label-md font-label-md transition-all whitespace-nowrap active:scale-95 duration-150 ${
                           isActive 
-                            ? 'bg-text-primary text-bg-base font-bold' 
-                            : 'border border-outline-variant bg-white/10 hover:bg-white/20 text-text-primary'
+                            ? 'bg-primary text-white font-bold shadow-md shadow-primary/25' 
+                            : 'border border-border-subtle bg-surface-container hover:bg-surface-container-high text-text-secondary hover:text-text-primary'
                         }`}
                       >
                         {filter}
@@ -3373,13 +3430,13 @@ function YourApp({ initialPlayerState }) {
                     <div className="flex items-center gap-4 justify-center">
                       <button 
                         onClick={() => setActiveTab('explore')}
-                        className="bg-white text-black px-8 py-3 rounded-full font-label-lg text-label-lg font-bold hover:bg-opacity-90 transition-colors active:scale-95 duration-150"
+                        className="bg-primary text-white px-8 py-3 rounded-full font-label-lg text-label-lg font-bold hover:opacity-90 shadow-lg shadow-primary/25 transition-all active:scale-95 duration-150"
                       >
                         Find songs
                       </button>
                       <button 
                         onClick={() => setShowImportModal(true)}
-                        className="bg-surface-container-highest text-text-primary border border-outline-variant px-8 py-3 rounded-full font-label-lg text-label-lg font-bold hover:bg-surface-container-high transition-colors active:scale-95 duration-150 flex items-center gap-2"
+                        className="bg-surface-container text-text-primary border border-border-subtle px-8 py-3 rounded-full font-label-lg text-label-lg font-bold hover:bg-surface-container-high transition-colors active:scale-95 duration-150 flex items-center gap-2"
                       >
                         <span className="material-symbols-outlined text-[18px]">link</span>
                         Import a playlist
@@ -3600,19 +3657,19 @@ function YourApp({ initialPlayerState }) {
                     {isEditingProfile ? (
                       <div className="flex-1 flex flex-col gap-2 pb-1">
                         <input
-                          className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-lg font-bold backdrop-blur-sm focus:outline-none focus:border-white/40 w-full max-w-xs"
+                          className="bg-surface-container border border-border-subtle rounded-xl px-3 py-1.5 text-text-primary text-lg font-bold focus:outline-none focus:border-primary w-full max-w-xs transition-colors"
                           value={editNameVal}
                           onChange={e => setEditNameVal(e.target.value)}
                           placeholder="Your name"
                         />
                         <input
-                          className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white/70 text-sm backdrop-blur-sm focus:outline-none focus:border-white/40 w-full max-w-xs"
+                          className="bg-surface-container border border-border-subtle rounded-xl px-3 py-1.5 text-text-secondary text-sm focus:outline-none focus:border-primary w-full max-w-xs transition-colors"
                           value={editUsernameVal}
                           onChange={e => setEditUsernameVal(e.target.value)}
                           placeholder="@username"
                         />
                         <textarea
-                          className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white/60 text-sm backdrop-blur-sm focus:outline-none focus:border-white/40 w-full max-w-sm resize-none"
+                          className="bg-surface-container border border-border-subtle rounded-xl px-3 py-1.5 text-text-secondary text-sm focus:outline-none focus:border-primary w-full max-w-sm resize-none transition-colors"
                           rows={2}
                           value={editBioVal}
                           onChange={e => setEditBioVal(e.target.value)}
@@ -3621,19 +3678,19 @@ function YourApp({ initialPlayerState }) {
                         <div className="flex gap-2 mt-1">
                           <button
                             onClick={handleSaveProfile}
-                            className="bg-white text-black px-5 py-1.5 rounded-full text-sm font-bold hover:bg-secondary-fixed transition-colors active:scale-95 duration-150"
+                            className="bg-primary text-white px-5 py-1.5 rounded-full text-sm font-bold hover:bg-primary/90 transition-colors active:scale-95 duration-150 shadow-sm shadow-primary/25"
                           >Save</button>
                           <button
                             onClick={() => setIsEditingProfile(false)}
-                            className="bg-white/10 text-white px-5 py-1.5 rounded-full text-sm font-bold hover:bg-white/20 transition-colors active:scale-95 duration-150"
+                            className="bg-surface-container text-text-primary border border-border-subtle px-5 py-1.5 rounded-full text-sm font-bold hover:bg-surface-container-high transition-colors active:scale-95 duration-150"
                           >Cancel</button>
                         </div>
                       </div>
                     ) : (
                       <div className="flex-1 flex flex-col gap-1 pb-2">
-                        <h1 className="text-2xl font-bold text-white leading-tight">{profileName || "Your Name"}</h1>
-                        <p className="text-white/60 text-sm">{profileUsername || "@username"}</p>
-                        <p className="text-white/50 text-sm max-w-md line-clamp-2">{profileBio || "No bio added yet."}</p>
+                        <h1 className="text-2xl font-bold text-text-primary leading-tight">{profileName || "Your Name"}</h1>
+                        <p className="text-text-secondary text-sm">{profileUsername || "@username"}</p>
+                        <p className="text-text-tertiary text-sm max-w-md line-clamp-2">{profileBio || "No bio added yet."}</p>
                       </div>
                     )}
 
@@ -3642,7 +3699,7 @@ function YourApp({ initialPlayerState }) {
                       <div className="flex gap-2 mb-2 flex-shrink-0">
                         <button
                           onClick={handleStartEditProfile}
-                          className="flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-2 rounded-full text-sm text-white hover:bg-white/20 transition-all active:scale-95 duration-150 backdrop-blur-sm"
+                          className="flex items-center gap-2 bg-surface-container border border-border-subtle px-4 py-2 rounded-full text-sm text-text-primary hover:bg-surface-container-high transition-all active:scale-95 duration-150 shadow-sm"
                         >
                           <span className="material-symbols-outlined text-base">edit</span>
                           Edit profile
@@ -3654,7 +3711,7 @@ function YourApp({ initialPlayerState }) {
                               alert("Listening history has been cleared.");
                             }
                           }}
-                          className="flex items-center gap-2 bg-red-600/20 border border-red-500/30 px-4 py-2 rounded-full text-sm text-red-400 hover:bg-red-600/30 transition-all active:scale-95 duration-150 backdrop-blur-sm"
+                          className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-4 py-2 rounded-full text-sm text-red-500 hover:bg-red-500/20 transition-all active:scale-95 duration-150 shadow-sm"
                         >
                           <span className="material-symbols-outlined text-base">delete_sweep</span>
                           Clear History
@@ -3667,26 +3724,26 @@ function YourApp({ initialPlayerState }) {
                 {/* Stats Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                   {[
-                    { label: 'Hours listened', value: String(hoursListened), icon: 'headphones', color: 'from-red-700/30 to-red-900/10' },
-                    { label: 'Songs liked', value: String(libraryItems.filter(i => i.type === 'Song').length), icon: 'favorite', color: 'from-pink-700/30 to-pink-900/10' },
-                    { label: 'Artists followed', value: String(libraryItems.filter(i => i.type === 'Artist').length), icon: 'person', color: 'from-blue-700/30 to-blue-900/10' },
-                    { label: 'Playlists', value: String(libraryItems.filter(i => i.type === 'Playlist').length), icon: 'queue_music', color: 'from-purple-700/30 to-purple-900/10' },
+                    { label: 'Hours listened', value: String(hoursListened), icon: 'headphones', color: 'from-primary/15 to-transparent' },
+                    { label: 'Songs liked', value: String(libraryItems.filter(i => i.type === 'Song').length), icon: 'favorite', color: 'from-pink-500/15 to-transparent' },
+                    { label: 'Artists followed', value: String(libraryItems.filter(i => i.type === 'Artist').length), icon: 'person', color: 'from-blue-500/15 to-transparent' },
+                    { label: 'Playlists', value: String(libraryItems.filter(i => i.type === 'Playlist').length), icon: 'queue_music', color: 'from-purple-500/15 to-transparent' },
                   ].map(stat => (
-                    <div key={stat.label} className={`glass rounded-2xl p-5 flex flex-col gap-3 bg-gradient-to-br ${stat.color} achievement-border`}>
+                    <div key={stat.label} className={`glass rounded-2xl p-5 flex flex-col gap-3 bg-gradient-to-br ${stat.color} border border-border-subtle shadow-sm hover:border-primary/30 transition-colors`}>
                       <div className="flex items-center justify-between">
-                        <span className="material-symbols-outlined text-white/40 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
+                        <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-white">{stat.value}</p>
-                        <p className="text-xs text-white/50 mt-0.5">{stat.label}</p>
+                        <p className="text-2xl font-bold text-text-primary">{stat.value}</p>
+                        <p className="text-xs text-text-tertiary mt-0.5 font-medium">{stat.label}</p>
                       </div>
                     </div>
                   ))}
                 </div>
 
                 {/* Weekly Activity */}
-                <div className="glass rounded-2xl p-6 mb-8">
-                  <h2 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-5">Weekly Activity</h2>
+                <div className="glass rounded-2xl p-6 mb-8 border border-border-subtle shadow-sm">
+                  <h2 className="text-xs font-bold text-text-tertiary uppercase tracking-widest mb-5">Weekly Activity</h2>
                   <div className="flex items-end gap-3 h-28">
                     {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day, i) => {
                       const heights = [0, 0, 0, 0, 0, 0, 0];
@@ -3694,10 +3751,10 @@ function YourApp({ initialPlayerState }) {
                       return (
                         <div key={day} className="flex-1 flex flex-col items-center gap-2">
                           <div
-                            className={`w-full rounded-t-lg transition-all duration-500 ${isToday ? 'bg-primary-container' : 'bg-white/10 hover:bg-white/20'}`}
+                            className={`w-full rounded-t-lg transition-all duration-500 ${isToday ? 'bg-primary shadow-sm shadow-primary/30' : 'bg-surface-container-high hover:bg-surface-container-highest'}`}
                             style={{ height: `${heights[i]}%` }}
                           />
-                          <span className={`text-xs font-medium ${isToday ? 'text-primary-container' : 'text-white/30'}`}>{day}</span>
+                          <span className={`text-xs font-medium ${isToday ? 'text-primary font-bold' : 'text-text-tertiary'}`}>{day}</span>
                         </div>
                       );
                     })}
@@ -3706,7 +3763,7 @@ function YourApp({ initialPlayerState }) {
 
                 {/* Achievements */}
                 <div className="mb-8">
-                  <h2 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Achievements</h2>
+                  <h2 className="text-xs font-bold text-text-tertiary uppercase tracking-widest mb-4">Achievements</h2>
                   <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
                     {[
                       { icon: 'music_note', label: 'First Song', desc: 'Played your first song', color: '#FF6B6B', unlocked: libraryItems.some(i => i.type === 'Song') },
@@ -3717,17 +3774,17 @@ function YourApp({ initialPlayerState }) {
                     ].map(a => (
                       <div
                         key={a.label}
-                        className={`flex-shrink-0 glass rounded-2xl p-4 flex flex-col items-center gap-2 w-32 transition-all duration-200 ${a.unlocked ? 'hover:scale-105' : 'opacity-40 grayscale'} achievement-border`}
+                        className={`flex-shrink-0 glass rounded-2xl p-4 flex flex-col items-center gap-2 w-32 transition-all duration-200 border border-border-subtle ${a.unlocked ? 'hover:scale-105' : 'opacity-40 grayscale'}`}
                       >
                         <div
                           className="w-12 h-12 rounded-full flex items-center justify-center mb-1"
-                          style={{ background: a.unlocked ? `${a.color}22` : 'rgba(255,255,255,0.05)', border: `1px solid ${a.unlocked ? a.color + '44' : 'rgba(255,255,255,0.1)'}` }}
+                          style={{ background: a.unlocked ? `${a.color}22` : 'var(--surface-container-high)', border: `1px solid ${a.unlocked ? a.color + '44' : 'var(--border-subtle)'}` }}
                         >
-                          <span className="material-symbols-outlined text-2xl" style={{ color: a.unlocked ? a.color : '#666', fontVariationSettings: "'FILL' 1" }}>{a.icon}</span>
+                          <span className="material-symbols-outlined text-2xl" style={{ color: a.unlocked ? a.color : 'var(--text-tertiary)', fontVariationSettings: "'FILL' 1" }}>{a.icon}</span>
                         </div>
-                        <p className="text-xs font-bold text-white text-center">{a.label}</p>
-                        <p className="text-[10px] text-white/40 text-center leading-tight">{a.desc}</p>
-                        {!a.unlocked && <span className="material-symbols-outlined text-sm text-white/20">lock</span>}
+                        <p className="text-xs font-bold text-text-primary text-center">{a.label}</p>
+                        <p className="text-[10px] text-text-secondary text-center leading-tight">{a.desc}</p>
+                        {!a.unlocked && <span className="material-symbols-outlined text-sm text-text-tertiary">lock</span>}
                       </div>
                     ))}
                   </div>
@@ -3736,10 +3793,10 @@ function YourApp({ initialPlayerState }) {
                 {/* Top Artists */}
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-sm font-bold text-white/50 uppercase tracking-widest">Top Artists</h2>
+                    <h2 className="text-xs font-bold text-text-tertiary uppercase tracking-widest">Top Artists</h2>
                     <button
                       onClick={() => setActiveTab('explore')}
-                      className="text-xs text-white/40 hover:text-white/70 transition-colors"
+                      className="text-xs text-text-secondary hover:text-text-primary transition-colors"
                     >Explore more →</button>
                   </div>
                   {(() => {
@@ -3755,9 +3812,9 @@ function YourApp({ initialPlayerState }) {
                         };
                       });
                     return topArtists.length === 0 ? (
-                      <div className="glass rounded-2xl p-8 flex flex-col items-center justify-center gap-3 text-center">
-                        <span className="material-symbols-outlined text-4xl text-white/20">person</span>
-                        <p className="text-white/40 text-sm">No top artists yet. Start listening to save artists!</p>
+                      <div className="glass rounded-2xl p-8 flex flex-col items-center justify-center gap-3 text-center border border-border-subtle">
+                        <span className="material-symbols-outlined text-4xl text-text-tertiary">person</span>
+                        <p className="text-text-secondary text-sm">No top artists yet. Start listening to save artists!</p>
                       </div>
                     ) : (
                       <div className="flex gap-5 overflow-x-auto hide-scrollbar pb-2">
@@ -3767,23 +3824,23 @@ function YourApp({ initialPlayerState }) {
                             onClick={() => handleOpenArtist(artist.name)}
                             className="flex-shrink-0 flex flex-col items-center gap-3 w-[180px] cursor-pointer group"
                           >
-                            <div className="relative w-[160px] h-[160px] rounded-full overflow-hidden border-2 border-white/10 group-hover:border-white/30 transition-all duration-200 group-hover:scale-105 bg-gradient-to-br from-red-700/20 to-blue-900/20 flex items-center justify-center">
+                            <div className="relative w-[160px] h-[160px] rounded-full overflow-hidden border-2 border-border-subtle group-hover:border-primary/40 transition-all duration-200 group-hover:scale-105 bg-surface-container-high flex items-center justify-center shadow-md">
                               {artist.img ? (
                                 <img src={artist.img} alt={artist.name} className="w-full h-full object-cover" />
                               ) : (
-                                <span className="material-symbols-outlined text-3xl text-white/40">person</span>
+                                <span className="material-symbols-outlined text-3xl text-text-tertiary">person</span>
                               )}
                               <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <span className="material-symbols-outlined text-white text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
                               </div>
                             </div>
                             <div className="text-center w-full">
-                              <p className="text-xs font-bold text-white line-clamp-1">{artist.name}</p>
+                              <p className="text-xs font-bold text-text-primary line-clamp-1">{artist.name}</p>
                               {artist.listeners !== '0' && (
-                                <p className="text-[10px] text-white/40">{artist.listeners} listeners</p>
+                                <p className="text-[10px] text-text-tertiary">{artist.listeners} listeners</p>
                               )}
                             </div>
-                            {i === 0 && <span className="text-[9px] bg-primary-container/30 text-primary-container border border-primary-container/30 rounded-full px-2 py-0.5 font-bold">#1</span>}
+                            {i === 0 && <span className="text-[9px] bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5 font-bold">#1</span>}
                           </div>
                         ))}
                       </div>
@@ -3899,8 +3956,8 @@ function YourApp({ initialPlayerState }) {
                         }}
                         className={`px-4 py-2 rounded-full font-bold text-label-md transition-all shrink-0 border duration-150 active:scale-95 ${
                           isActive 
-                            ? 'bg-text-primary border-text-primary text-bg-base' 
-                            : 'bg-white/5 border-white/10 text-text-primary hover:bg-white/10 hover:border-white/20'
+                            ? 'bg-primary border-primary text-white shadow-sm shadow-primary/25' 
+                            : 'bg-surface-container border-border-subtle text-text-primary hover:bg-surface-container-high hover:border-outline-variant'
                         }`}
                       >
                         {moodName}
@@ -3922,7 +3979,7 @@ function YourApp({ initialPlayerState }) {
                           const mix = moodCache[activeMood] || [];
                           if (mix.length > 0) handlePlayTrack(mix[0], mix, `home_${activeMood}_mood`);
                         }}
-                        className="border border-outline-variant hover:bg-surface-container-high transition-colors text-label-md font-bold px-4 py-1.5 rounded-full active:scale-95 duration-100"
+                        className="border border-border-subtle bg-surface-container hover:bg-surface-container-high transition-colors text-label-md font-bold px-4 py-1.5 rounded-full active:scale-95 duration-100 text-text-primary"
                       >
                         Play Mix
                       </button>
@@ -4343,17 +4400,17 @@ function YourApp({ initialPlayerState }) {
 
       {/* Bottom Player Bar */}
       {!isPlayerExpanded && currentTrack && (
-        <footer className="shrink-0 w-full z-50 bg-bg-player backdrop-blur-md bg-opacity-80 h-player-height border-t border-white/5 flex flex-col items-center relative">
+        <footer className="shrink-0 w-full z-50 bg-bg-player/85 backdrop-blur-2xl h-player-height border-t border-border-subtle flex flex-col items-center relative shadow-2xl transition-colors duration-300">
         {/* Progress Bar at top of container */}
         <div 
           onClick={handleProgressBarClick}
-          className="absolute top-0 left-0 w-full h-[3px] bg-white/10 hover:h-[5px] group cursor-pointer overflow-hidden transition-all"
+          className="absolute top-0 left-0 w-full h-[3px] bg-border-subtle hover:h-[5px] group cursor-pointer overflow-hidden transition-all"
         >
           <div 
-            className="h-full bg-primary-container transition-all relative"
+            className="h-full bg-primary transition-all relative"
             style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
           >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary-container rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150"></div>
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full opacity-0 group-hover:opacity-100 shadow-md transition-opacity duration-150"></div>
           </div>
         </div>
         
@@ -4363,12 +4420,16 @@ function YourApp({ initialPlayerState }) {
             <motion.div 
               layoutId="now-playing-artwork"
               onClick={() => setIsPlayerExpanded(true)}
-              className="rounded-lg overflow-hidden flex-shrink-0 bg-surface-container-high cursor-pointer hover:scale-105 transition-transform" style={{width:52,height:52}}
+              className="rounded-xl overflow-hidden flex-shrink-0 bg-surface-container-high cursor-pointer hover:scale-105 transition-transform shadow-md" style={{width:52,height:52}}
             >
               <img 
                 alt="Playing album art" 
                 className="w-full h-full object-cover" 
                 src={currentTrack ? currentTrack.thumbnail : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80'}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=640&h=640&fit=crop&q=80';
+                }}
               />
             </motion.div>
             <div 
@@ -4379,17 +4440,7 @@ function YourApp({ initialPlayerState }) {
                 <span className="truncate">{currentTrack ? currentTrack.title : 'No track selected'}</span>
                 {isRestored && (
                   <span 
-                    className="flex items-center shrink-0 select-none font-medium"
-                    style={{
-                      height: '18px',
-                      padding: '0 8px',
-                      borderRadius: '9999px',
-                      background: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      fontSize: '11px',
-                      color: '#aaaaaa',
-                      lineHeight: '16px'
-                    }}
+                    className="flex items-center shrink-0 select-none font-medium text-[11px] px-2 py-0.5 rounded-full bg-surface-container-highest border border-border-subtle text-text-secondary"
                   >
                     Resume
                   </span>
@@ -4401,7 +4452,7 @@ function YourApp({ initialPlayerState }) {
             </div>
             {currentTrack && (
               <div className="hidden md:flex items-center gap-2 ml-4 shrink-0">
-                <button className="material-symbols-outlined icon-btn icon-btn-sm text-text-secondary hover:text-text-primary">thumb_down</button>
+                <button className="material-symbols-outlined icon-btn icon-btn-sm text-text-tertiary hover:text-text-primary transition-colors">thumb_down</button>
                 <div className="relative flex items-center justify-center">
                   <motion.button 
                     variants={likeButtonVariants}
@@ -4412,10 +4463,10 @@ function YourApp({ initialPlayerState }) {
                       }
                       handleToggleLike(currentTrack);
                     }}
-                    className="material-symbols-outlined icon-btn icon-btn-sm active:scale-95 flex items-center justify-center"
+                    className="material-symbols-outlined icon-btn icon-btn-sm active:scale-95 flex items-center justify-center transition-colors"
                     style={{ 
                       fontVariationSettings: isCurrentTrackLiked ? "'FILL' 1" : "'FILL' 0",
-                      color: isCurrentTrackLiked ? "#ff5540" : "#aaaaaa"
+                      color: isCurrentTrackLiked ? "#f43f5e" : "var(--text-tertiary)"
                     }}
                   >
                     favorite
@@ -4430,7 +4481,7 @@ function YourApp({ initialPlayerState }) {
                             variants={likeParticleVariants(angle)}
                             initial="initial"
                             animate="burst"
-                            className="absolute w-1.5 h-1.5 rounded-full bg-[#ff5540]"
+                            className="absolute w-1.5 h-1.5 rounded-full bg-primary"
                           />
                         );
                       })}
@@ -4439,7 +4490,7 @@ function YourApp({ initialPlayerState }) {
                 </div>
                 <button 
                   onClick={(e) => handleOpenTrackMenu(e, currentTrack, currentTrack ? [currentTrack, ...upNextQueue] : null)}
-                  className="material-symbols-outlined icon-btn icon-btn-sm text-text-secondary hover:text-text-primary"
+                  className="material-symbols-outlined icon-btn icon-btn-sm text-text-tertiary hover:text-text-primary transition-colors"
                 >
                   more_vert
                 </button>
@@ -4452,14 +4503,14 @@ function YourApp({ initialPlayerState }) {
             <button 
               onClick={handleToggleShuffle}
               className={`material-symbols-outlined icon-btn icon-btn-sm transition-colors duration-150 ${
-                isShuffle ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                isShuffle ? 'text-primary font-bold' : 'text-text-tertiary hover:text-text-primary'
               }`}
             >
               shuffle
             </button>
             <button 
               onClick={handlePrevTrack}
-              className="material-symbols-outlined icon-btn icon-btn-md text-text-primary"
+              className="material-symbols-outlined icon-btn icon-btn-md text-text-primary hover:text-primary transition-colors active:scale-95"
             >
               skip_previous
             </button>
@@ -4467,13 +4518,13 @@ function YourApp({ initialPlayerState }) {
             <button 
               onClick={handlePlayPauseClick}
               disabled={!currentTrack}
-              className={`w-10 h-10 bg-text-primary rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-md ${
+              className={`w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-md shadow-primary/25 hover:shadow-primary/40 ${
                 !currentTrack ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
               <span
                 className={`material-symbols-outlined select-none ${isBuffering ? 'animate-spin' : ''}`}
-                style={{ fontSize: 22, color: '#000', fontVariationSettings: "'FILL' 1" }}
+                style={{ fontSize: 22, color: '#ffffff', fontVariationSettings: "'FILL' 1" }}
               >
                 {isBuffering ? 'autorenew' : isPlaying ? 'pause' : 'play_arrow'}
               </span>
@@ -4481,14 +4532,14 @@ function YourApp({ initialPlayerState }) {
             
             <button 
               onClick={handleNextTrack}
-              className="material-symbols-outlined icon-btn icon-btn-md text-text-primary"
+              className="material-symbols-outlined icon-btn icon-btn-md text-text-primary hover:text-primary transition-colors active:scale-95"
             >
               skip_next
             </button>
             <button 
               onClick={handleToggleRepeat}
               className={`material-symbols-outlined icon-btn icon-btn-sm transition-colors duration-150 ${
-                repeatMode !== 'off' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                repeatMode !== 'off' ? 'text-primary font-bold' : 'text-text-tertiary hover:text-text-primary'
               }`}
             >
               {repeatMode === 'one' ? 'repeat_one' : 'repeat'}
@@ -4513,12 +4564,12 @@ function YourApp({ initialPlayerState }) {
             <div className="hidden md:flex items-center gap-2 group cursor-pointer">
               <button 
                 onClick={() => setIsMuted(!isMuted)}
-                className="material-symbols-outlined icon-btn icon-btn-sm text-text-secondary group-hover:text-text-primary"
+                className="material-symbols-outlined icon-btn icon-btn-sm text-text-tertiary group-hover:text-text-primary transition-colors"
               >
                 {isMuted || volume === 0 ? 'volume_off' : volume < 40 ? 'volume_down' : 'volume_up'}
               </button>
               <div 
-                className="w-24 h-1 bg-white/20 rounded-full relative overflow-hidden"
+                className="w-24 h-1.5 bg-surface-container-highest rounded-full relative overflow-hidden group/vol cursor-pointer"
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const val = Math.round(((e.clientX - rect.left) / rect.width) * 100);
@@ -4527,14 +4578,14 @@ function YourApp({ initialPlayerState }) {
                 }}
               >
                 <div 
-                  className="absolute inset-0 bg-text-primary transition-colors"
+                  className="absolute inset-0 bg-primary transition-all duration-75"
                   style={{ width: `${isMuted ? 0 : volume}%` }}
                 ></div>
               </div>
             </div>
             <button 
               onClick={() => setIsPlayerExpanded(true)}
-              className="hidden md:flex material-symbols-outlined icon-btn icon-btn-sm text-text-secondary hover:text-text-primary"
+              className="hidden md:flex material-symbols-outlined icon-btn icon-btn-sm text-text-tertiary hover:text-text-primary transition-colors"
             >
               expand_less
             </button>
@@ -4545,7 +4596,7 @@ function YourApp({ initialPlayerState }) {
 
       {/* BottomNavBar Shell (Mobile) */}
       {!isPlayerExpanded && (
-        <nav className="md:hidden shrink-0 w-full z-50 flex justify-between items-center px-4 bg-bg-player backdrop-blur-md bg-opacity-60 h-player-height border-t border-white/5 shadow-2xl relative">
+        <nav className="md:hidden shrink-0 w-full z-50 flex justify-between items-center px-4 bg-bg-nav/90 backdrop-blur-2xl h-player-height border-t border-border-subtle shadow-2xl relative transition-colors duration-300">
         <button 
           onClick={() => {
             setActiveTab('home');
@@ -4557,7 +4608,7 @@ function YourApp({ initialPlayerState }) {
             setIsPlayerExpanded(false);
           }}
           className={`flex flex-col items-center justify-center gap-1 w-full ${
-            activeTab === 'home' && !isSearching && !activeArtist && !activeAlbum ? 'text-text-primary font-bold scale-105' : 'text-text-secondary'
+            activeTab === 'home' && !isSearching && !activeArtist && !activeAlbum ? 'text-primary font-bold scale-105' : 'text-text-tertiary hover:text-text-primary'
           }`}
         >
           <span className="material-symbols-outlined" style={activeTab === 'home' && !isSearching && !activeArtist && !activeAlbum ? { fontVariationSettings: "'FILL' 1" } : {}}>home</span>
@@ -4575,7 +4626,7 @@ function YourApp({ initialPlayerState }) {
             setIsPlayerExpanded(false);
           }}
           className={`flex flex-col items-center justify-center gap-1 w-full ${
-            activeTab === 'explore' && !isSearching && !activeArtist && !activeAlbum ? 'text-text-primary font-bold scale-105' : 'text-text-secondary'
+            activeTab === 'explore' && !isSearching && !activeArtist && !activeAlbum ? 'text-primary font-bold scale-105' : 'text-text-tertiary hover:text-text-primary'
           }`}
         >
           <span className="material-symbols-outlined" style={activeTab === 'explore' && !isSearching && !activeArtist && !activeAlbum ? { fontVariationSettings: "'FILL' 1" } : {}}>explore</span>
@@ -4593,7 +4644,7 @@ function YourApp({ initialPlayerState }) {
             setIsPlayerExpanded(false);
           }}
           className={`flex flex-col items-center justify-center gap-1 w-full ${
-            activeTab === 'profile' && !isSearching && !activeArtist && !activeAlbum ? 'text-text-primary font-bold scale-105' : 'text-text-secondary'
+            activeTab === 'profile' && !isSearching && !activeArtist && !activeAlbum ? 'text-primary font-bold scale-105' : 'text-text-tertiary hover:text-text-primary'
           }`}
         >
           <span className="material-symbols-outlined" style={activeTab === 'profile' && !isSearching && !activeArtist && !activeAlbum ? { fontVariationSettings: "'FILL' 1" } : {}}>person</span>
@@ -4611,7 +4662,7 @@ function YourApp({ initialPlayerState }) {
             setIsPlayerExpanded(false);
           }}
           className={`flex flex-col items-center justify-center gap-1 w-full ${
-            activeTab === 'library' && !isSearching && !activeArtist && !activeAlbum ? 'text-text-primary font-bold scale-105' : 'text-text-secondary'
+            activeTab === 'library' && !isSearching && !activeArtist && !activeAlbum ? 'text-primary font-bold scale-105' : 'text-text-tertiary hover:text-text-primary'
           }`}
         >
           <span className="material-symbols-outlined" style={activeTab === 'library' && !isSearching && !activeArtist && !activeAlbum ? { fontVariationSettings: "'FILL' 1" } : {}}>library_music</span>
@@ -4634,11 +4685,11 @@ function YourApp({ initialPlayerState }) {
               exit="exit"
               variants={contextMenuVariants}
               style={{ top: trackMenu.y, left: trackMenu.x }}
-              className="fixed bg-[#161616] border border-white/10 rounded-xl p-1.5 shadow-2xl min-w-[210px] z-[101] backdrop-blur-md bg-opacity-95"
+              className="fixed bg-surface-container/95 border border-border-subtle rounded-2xl p-1.5 shadow-2xl min-w-[210px] z-[101] backdrop-blur-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-3 py-2 border-b border-white/5 mb-1 max-w-[210px]">
-                <p className="text-xs font-semibold text-white truncate">{trackMenu.track.title}</p>
+              <div className="px-3 py-2 border-b border-border-subtle mb-1 max-w-[210px]">
+                <p className="text-xs font-semibold text-text-primary truncate">{trackMenu.track.title}</p>
                 <p className="text-[10px] text-text-secondary truncate">{trackMenu.track.artist}</p>
               </div>
               
@@ -4647,7 +4698,7 @@ function YourApp({ initialPlayerState }) {
                   handlePlayTrack(trackMenu.track, trackMenu.contextQueue, trackMenu.contextQueue ? 'queue' : 'unknown');
                   setTrackMenu(null);
                 }}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-primary hover:bg-white/5 transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2 rounded-xl text-sm text-text-primary hover:bg-surface-container-high transition-colors flex items-center gap-2.5 active:scale-95"
               >
                 <span className="material-symbols-outlined text-[18px]">play_arrow</span>
                 <span>Play Now</span>
@@ -4658,7 +4709,7 @@ function YourApp({ initialPlayerState }) {
                   handleTogglePinSpeedDial(trackMenu.track);
                   setTrackMenu(null);
                 }}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-primary hover:bg-white/5 transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2 rounded-xl text-sm text-text-primary hover:bg-surface-container-high transition-colors flex items-center gap-2.5 active:scale-95"
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {speedDialItems.some(item => item.id === trackMenu.track.id) ? 'do_not_disturb_on' : 'push_pin'}
@@ -4673,9 +4724,9 @@ function YourApp({ initialPlayerState }) {
                   handleToggleLike(trackMenu.track);
                   setTrackMenu(null);
                 }}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-primary hover:bg-white/5 transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2 rounded-xl text-sm text-text-primary hover:bg-surface-container-high transition-colors flex items-center gap-2.5 active:scale-95"
               >
-                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: libraryItems.some(item => item.id === trackMenu.track.id) ? "'FILL' 1" : "'FILL' 0", color: libraryItems.some(item => item.id === trackMenu.track.id) ? '#ff5540' : 'inherit' }}>
+                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: libraryItems.some(item => item.id === trackMenu.track.id) ? "'FILL' 1" : "'FILL' 0", color: libraryItems.some(item => item.id === trackMenu.track.id) ? '#f43f5e' : 'inherit' }}>
                   favorite
                 </span>
                 <span>
@@ -4718,9 +4769,9 @@ function YourApp({ initialPlayerState }) {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="fixed bottom-24 left-6 z-[300] bg-[#1f1f1f] border border-white/10 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3"
+            className="fixed bottom-24 left-6 z-[300] bg-surface-container/95 border border-border-subtle text-text-primary px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-2xl"
           >
-            <span className="material-symbols-outlined text-[#ff5540]">error</span>
+            <span className="material-symbols-outlined text-primary">error</span>
             <span className="text-body-md font-medium">{toastMessage}</span>
           </motion.div>
         )}
