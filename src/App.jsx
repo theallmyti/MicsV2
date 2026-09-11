@@ -178,32 +178,23 @@ const clearSearchHistory = () => {
 };
 
 
-function YourApp({ initialPlayerState, convexUser, sessionToken, onLogout }) {
+function YourApp({ initialPlayerState }) {
   // Navigation & Tab state
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'explore' | 'library' | 'profile'
-  // Profile — prefer Convex cloud data, fall back to localStorage
+  // Profile — stored locally in browser
   const [profileName, setProfileName] = useState(() =>
-    convexUser?.displayName || localStorage.getItem('mics_profile_name') || ''
+    localStorage.getItem('mics_profile_name') || 'Guest User'
   );
   const [profileUsername, setProfileUsername] = useState(() =>
-    convexUser?.username || localStorage.getItem('mics_profile_username') || ''
+    localStorage.getItem('mics_profile_username') || '@guest'
   );
   const [profileBio, setProfileBio] = useState(() =>
-    convexUser?.bio || localStorage.getItem('mics_profile_bio') || ''
+    localStorage.getItem('mics_profile_bio') || 'Music lover & playlist creator.'
   );
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editNameVal, setEditNameVal] = useState(profileName);
   const [editUsernameVal, setEditUsernameVal] = useState(profileUsername);
   const [editBioVal, setEditBioVal] = useState(profileBio);
-
-  // Keep profile in sync if convexUser loads after initial render
-  useEffect(() => {
-    if (convexUser) {
-      if (convexUser.displayName) setProfileName(convexUser.displayName);
-      if (convexUser.username) setProfileUsername(convexUser.username);
-      if (convexUser.bio) setProfileBio(convexUser.bio);
-    }
-  }, [convexUser?.displayName, convexUser?.username, convexUser?.bio]);
 
   const handleStartEditProfile = () => {
     setEditNameVal(profileName);
@@ -4738,13 +4729,10 @@ function YourApp({ initialPlayerState, convexUser, sessionToken, onLogout }) {
   );
 }
 
-export default function App({ initialPlayerState, convexUser, sessionToken, onLogout }) {
+export default function App({ initialPlayerState }) {
   return (
     <YourApp
       initialPlayerState={initialPlayerState}
-      convexUser={convexUser}
-      sessionToken={sessionToken}
-      onLogout={onLogout}
     />
   );
 }

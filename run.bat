@@ -6,9 +6,6 @@ echo.
 echo Starting all development servers...
 echo.
 
-echo [System] Launching Convex Dev...
-start "Convex Dev" cmd /k "npx convex dev"
-
 echo [System] Launching Express Backend...
 start "Express Backend" cmd /k "npx tsx server/index.ts"
 

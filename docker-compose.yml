@@ -1,23 +1,25 @@
-version: '3.8'
-
 services:
-  backend:
+  mics:
     build: .
-    container_name: mics-backend
+    container_name: mics-app
+    restart: unless-stopped
     ports:
       - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      - STREAM_API_URL=${STREAM_API_URL:-}
+      - STREAM_API_KEY=${STREAM_API_KEY:-}
+      - STREAM_API_HEADER=${STREAM_API_HEADER:-x-api-key}
+      - YTDLP_PROXY=${YTDLP_PROXY:-}
+      - YTDLP_COOKIES=${YTDLP_COOKIES:-}
     volumes:
       - ./cache:/app/cache
-    environment:
-      - NODE_ENV=production
-      # Uncomment the line below to connect to the redis container if you need rate-limiting across instances
-      # - REDIS_URL=redis://redis:6379
-    restart: unless-stopped
 
-  # Optional Redis service
-  # redis:
-  #   image: redis:alpine
-  #   container_name: mics-redis
-  #   ports:
-  #     - "6379:6379"
-  #   restart: unless-stopped
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: mics-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://mics:3001
+    depends_on:
+      - mics

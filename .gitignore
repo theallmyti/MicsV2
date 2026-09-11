@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+cookies.txt
 
 # Editor directories and files
 .vscode/*
@@ -38,3 +42,5 @@ cache/
 scratch/
 dev-dist/
 graphify-out/
+.agents/
+.codex/

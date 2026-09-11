@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
@@ -5,15 +6,12 @@ import { createClient } from 'redis';
 import YTMusic from 'ytmusic-api';
 import youtubeSr from 'youtube-sr';
 import youtubedl from 'youtube-dl-exec';
+import http from 'http';
 import https from 'https';
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'fs';
 import path from 'path';
 
 import importRouter from './routes/import';
-
-puppeteer.use(StealthPlugin());
 
 const YouTube = (youtubeSr as any).default || youtubeSr;
 const app = express();
@@ -685,102 +683,108 @@ app.get('/api/info/:id', async (req: any, res: any) => {
 });
 
 // ===== Streaming Infrastructure =====
-const urlCache = new Map();
+const urlCache = new Map<string, string>();
 
-class BrowserQueue {
-  limit: number;
-  active: number;
-  queue: any[];
-  constructor(limit: number) {
-    this.limit = limit;
-    this.active = 0;
-    this.queue = [];
-  }
-  async acquire() {
-    if (this.active >= this.limit) {
-      await new Promise(resolve => this.queue.push(resolve));
-    }
-    this.active++;
-  }
-  release() {
-    this.active--;
-    if (this.queue.length > 0) {
-      const next = this.queue.shift();
-      next();
-    }
-  }
-}
-const browserQueue = new BrowserQueue(2);
+// --- Primary: Pluggable Stream API ---
+const STREAM_API_URL = process.env.STREAM_API_URL || null;
+const STREAM_API_KEY = process.env.STREAM_API_KEY || null;
+const STREAM_API_HEADER = process.env.STREAM_API_HEADER || 'x-api-key';
 
-// Headless fallback to manually extract the googlevideo URL
-async function getAudioUrlViaPuppeteer(id: string, attempt = 1): Promise<any> {
-  console.log(`[Fallback] Booting headless browser for ${id} (Attempt ${attempt})...`);
-  await browserQueue.acquire();
-  
-  let browser: any = null;
-  let audioUrl: string | null = null;
-
+async function extractFromSingleStreamApi(rawUrl: string, id: string): Promise<string | null> {
   try {
-    const puppeteerArgs = [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--disable-gpu'
-    ];
-    browser = await puppeteer.launch({ 
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: puppeteerArgs
-    });
-    const page = await browser.newPage();
-
-    await page.setRequestInterception(true);
-    page.on('request', (req: any) => {
-      const url = req.url();
-      if (['image', 'stylesheet', 'font', 'other'].includes(req.resourceType())) {
-        req.abort();
-        return;
-      }
-      if (url.includes('googlevideo.com/videoplayback') && url.includes('mime=audio')) {
-        audioUrl = url;
-      }
-      req.continue();
-    });
-
-    await page.goto(`https://www.youtube.com/watch?v=${id}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    let attempts = 0;
-    while (!audioUrl && attempts < 50) {
-      await new Promise(r => setTimeout(r, 200));
-      attempts++;
+    let endpoint = rawUrl.trim();
+    if (endpoint.includes(':id')) {
+      endpoint = endpoint.replace(':id', encodeURIComponent(id));
+    } else if (endpoint.includes('{id}')) {
+      endpoint = endpoint.replace('{id}', encodeURIComponent(id));
+    } else {
+      const sep = endpoint.includes('?') ? '&' : '?';
+      endpoint = `${endpoint}${sep}id=${encodeURIComponent(id)}`;
     }
+
+    console.log(`[StreamAPI] Attempting primary API extraction for ${id} via ${endpoint.slice(0, 60)}...`);
+
+    const headers: Record<string, string> = {
+      'User-Agent': 'MicsV2-Audio/1.0',
+      'Accept': 'application/json, audio/*;q=0.9, */*;q=0.8'
+    };
+    if (STREAM_API_KEY) {
+      headers[STREAM_API_HEADER] = STREAM_API_KEY;
+    }
+
+    const response = await fetch(endpoint, {
+      headers,
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      console.warn(`[StreamAPI] Primary API returned status ${response.status} for ${id}`);
+      return null;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data: any = await response.json();
+      let streamUrl =
+        data.url ||
+        data.stream_url ||
+        data.audio_url ||
+        data.link ||
+        data.downloadUrl ||
+        data.data?.url ||
+        data.data?.audio_url;
+
+      // Piped API format: audioStreams array (pick highest bitrate)
+      if (!streamUrl && Array.isArray(data.audioStreams) && data.audioStreams.length > 0) {
+        const sorted = [...data.audioStreams].sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+        streamUrl = sorted[0]?.url;
+      }
+
+      // Invidious format: adaptiveFormats array
+      if (!streamUrl && Array.isArray(data.adaptiveFormats)) {
+        const audioFormats = data.adaptiveFormats.filter((f: any) => f.type?.startsWith('audio') || f.mimeType?.startsWith('audio'));
+        if (audioFormats.length > 0) {
+          const sorted = [...audioFormats].sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+          streamUrl = sorted[0]?.url;
+        }
+      }
+
+      // Generic streams array
+      if (!streamUrl && Array.isArray(data.streams) && data.streams.length > 0) {
+        streamUrl = typeof data.streams[0] === 'string' ? data.streams[0] : data.streams[0]?.url;
+      }
+
+      if (streamUrl && typeof streamUrl === 'string') {
+        console.log(`[StreamAPI] Success! Got stream URL for ${id} via primary API.`);
+        return streamUrl;
+      }
+    } else if (contentType.startsWith('audio/') || response.status === 200 || response.status === 206) {
+      return endpoint;
+    } else if (response.url && response.url !== endpoint) {
+      return response.url;
+    }
+    return null;
   } catch (err: any) {
-    console.error(`[Fallback] Puppeteer error on attempt ${attempt}:`, err.message);
-  } finally {
-    if (browser) await browser.close();
-    browserQueue.release();
+    console.warn(`[StreamAPI] Primary API request failed for ${id}:`, err.message);
+    return null;
   }
-
-  if (!audioUrl) {
-    if (attempt < 2) {
-      console.log(`[Fallback] Retrying Puppeteer for ${id}...`);
-      return await getAudioUrlViaPuppeteer(id, attempt + 1);
-    }
-    console.error(`[Fallback] FATAL: Headless interception failed after 2 attempts.`);
-    throw new Error("Fallback failed: Could not intercept audio URL via headless browser.");
-  }
-  
-  console.log(`[Fallback] Success! Extracted raw stream URL via Puppeteer.`);
-  return audioUrl;
 }
 
-// yt-dlp primary extraction with retry and delay
-async function extractPrimary(id: string, attempt = 1): Promise<any> {
+async function extractFromStreamApi(id: string): Promise<string | null> {
+  if (!STREAM_API_URL) return null;
+  const urls = STREAM_API_URL.split(',').map(u => u.trim()).filter(Boolean);
+  for (const url of urls) {
+    const streamUrl = await extractFromSingleStreamApi(url, id);
+    if (streamUrl) return streamUrl;
+  }
+  return null;
+}
+
+// --- Backup: yt-dlp with Cookie and Proxy Support ---
+async function extractYtDlp(id: string, attempt = 1): Promise<string> {
   try {
     const url = `https://www.youtube.com/watch?v=${id}`;
-    const rawOutput: any = await youtubedl(url, {
+    const ytDlpOptions: any = {
       dumpJson: true,
       format: 'bestaudio/best',
       noWarnings: true,
@@ -789,18 +793,73 @@ async function extractPrimary(id: string, attempt = 1): Promise<any> {
       preferFreeFormats: true,
       youtubeSkipDashManifest: true,
       extractorArgs: 'youtube:player_client=android,ios,web'
-    });
+    };
+
+    // Auto-detect cookies.txt in root or cache/ to prevent IP/bot blocks
+    const cookiePath =
+      process.env.YTDLP_COOKIES ||
+      (fs.existsSync(path.join(process.cwd(), 'cookies.txt')) ? path.join(process.cwd(), 'cookies.txt') : null) ||
+      (fs.existsSync(path.join(process.cwd(), 'cache', 'cookies.txt')) ? path.join(process.cwd(), 'cache', 'cookies.txt') : null);
+
+    if (cookiePath) {
+      ytDlpOptions.cookies = cookiePath;
+    }
+
+    // Proxy support (YTDLP_PROXY or HTTP_PROXY)
+    const proxy = process.env.YTDLP_PROXY || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
+    if (proxy) {
+      ytDlpOptions.proxy = proxy;
+    }
+
+    const rawOutput: any = await youtubedl(url, ytDlpOptions);
     console.log(`[yt-dlp] Success! Extracted URL for ${id} on attempt ${attempt}.`);
     return rawOutput.url;
   } catch (err: any) {
-    console.warn(`[yt-dlp] Extraction failed on attempt ${attempt} for ${id}: ${err.message?.slice(0, 80)}`);
+    console.warn(`[yt-dlp] Backup extraction failed on attempt ${attempt} for ${id}: ${err.message?.slice(0, 100)}`);
     if (attempt < 3) {
-      await new Promise(r => setTimeout(r, 1000 * attempt));
-      console.log(`[yt-dlp] Retrying (attempt ${attempt + 1})...`);
-      return await extractPrimary(id, attempt + 1);
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
+      console.log(`[yt-dlp] Retrying backup extraction (attempt ${attempt + 1})...`);
+      return await extractYtDlp(id, attempt + 1);
     }
     throw err;
   }
+}
+
+// Unified orchestrator: Primary API -> yt-dlp fallback
+async function getAudioStreamUrl(id: string): Promise<string> {
+  if (STREAM_API_URL) {
+    const apiUrl = await extractFromStreamApi(id);
+    if (apiUrl) return apiUrl;
+    console.log(`[Stream] Primary API unavailable for ${id}. Falling back to yt-dlp backup...`);
+  }
+  return await extractYtDlp(id);
+}
+
+// Client helper: chooses http or https dynamically and follows redirects
+function getStreamClient(urlStr: string) {
+  return urlStr.startsWith('http:') ? http : https;
+}
+
+function requestWithRedirects(
+  targetUrl: string,
+  options: any,
+  callback: (res: http.IncomingMessage) => void,
+  maxRedirects = 5
+): http.ClientRequest {
+  const client = getStreamClient(targetUrl);
+  const req = client.get(targetUrl, options, (res) => {
+    if (
+      res.statusCode &&
+      [301, 302, 303, 307, 308].includes(res.statusCode) &&
+      res.headers.location &&
+      maxRedirects > 0
+    ) {
+      const redirectUrl = new URL(res.headers.location, targetUrl).toString();
+      return requestWithRedirects(redirectUrl, options, callback, maxRedirects - 1);
+    }
+    callback(res);
+  });
+  return req;
 }
 
 const CACHE_DIR = path.join(process.cwd(), 'cache');
@@ -899,13 +958,7 @@ app.get('/api/stream/:id', async (req: any, res: any) => {
     let directUrl = urlCache.get(id);
 
     if (!directUrl) {
-      try {
-        directUrl = await extractPrimary(id);
-      } catch (err) {
-        console.warn(`[yt-dlp] Primary extraction completely failed for ${id}. Triggering headless fallback...`);
-        directUrl = await getAudioUrlViaPuppeteer(id);
-      }
-      
+      directUrl = await getAudioStreamUrl(id);
       urlCache.set(id, directUrl);
       setTimeout(() => urlCache.delete(id), 5 * 60 * 1000);
     }
@@ -918,7 +971,7 @@ app.get('/api/stream/:id', async (req: any, res: any) => {
           'User-Agent': 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip'
         }
       };
-      https.get(directUrl, downloadOptions, (downloadRes) => {
+      requestWithRedirects(directUrl, downloadOptions, (downloadRes) => {
         if (downloadRes.statusCode === 200) {
           const fileStream = fs.createWriteStream(tempCachePath);
           downloadRes.pipe(fileStream);
@@ -957,7 +1010,7 @@ app.get('/api/stream/:id', async (req: any, res: any) => {
       options.headers.Range = req.headers.range;
     }
 
-    const proxyReq = https.get(directUrl, options, (streamRes) => {
+    const proxyReq = requestWithRedirects(directUrl, options, (streamRes) => {
       if (streamRes.statusCode === 403 || streamRes.statusCode === 429) {
         urlCache.delete(id);
       }
@@ -971,7 +1024,7 @@ app.get('/api/stream/:id', async (req: any, res: any) => {
         'Access-Control-Allow-Headers': 'Range, Origin, Content-Type, Accept',
         'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges'
       };
-      res.writeHead(streamRes.statusCode, proxyHeaders);
+      res.writeHead(streamRes.statusCode || 200, proxyHeaders);
       streamRes.pipe(res);
     });
 
@@ -1006,7 +1059,7 @@ app.get('/api/precache/:id', async (req: any, res: any) => {
   try {
     let directUrl = urlCache.get(id);
     if (!directUrl) {
-      directUrl = await extractPrimary(id);
+      directUrl = await getAudioStreamUrl(id);
       urlCache.set(id, directUrl);
       setTimeout(() => urlCache.delete(id), 5 * 60 * 1000);
     }
@@ -1019,7 +1072,7 @@ app.get('/api/precache/:id', async (req: any, res: any) => {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
         }
       };
-      https.get(directUrl, downloadOptions, (downloadRes) => {
+      requestWithRedirects(directUrl, downloadOptions, (downloadRes) => {
         if (downloadRes.statusCode === 200) {
           const fileStream = fs.createWriteStream(tempCachePath);
           downloadRes.pipe(fileStream);

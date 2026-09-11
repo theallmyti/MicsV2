@@ -1,12 +1,11 @@
 import { spawn, exec } from 'child_process';
 
 const commands = [
-  { name: 'Convex', command: 'npx', args: ['convex', 'dev'], color: '\x1b[36m' },  // Cyan
   { name: 'Backend', command: 'npx', args: ['tsx', 'server/index.ts'], color: '\x1b[32m' }, // Green
   { name: 'Vite', command: 'npm', args: ['run', 'dev'], color: '\x1b[35m' }      // Magenta
 ];
 
-console.log('\x1b[1m\x1b[34m[System] Starting Convex, Express Backend, and Vite Frontend concurrently...\x1b[0m\n');
+console.log('\x1b[1m\x1b[34m[System] Starting Express Backend and Vite Frontend concurrently...\x1b[0m\n');
 
 const children = [];
 
